@@ -6,7 +6,6 @@
 #include "egtypes.h"
 
 int loadF15DgtlBin();
-void callLoad3DAll();
 void setupDac();
 int fixedMulQ14(int a, int b);
 int cosine(int angle);
@@ -28,7 +27,6 @@ int far drawPolygonOutline(int fillColor, int pointCount, int* points, int edgeC
 void installDivZeroHandler();
 void installDivZeroVector();
 int far drawFlatHorizon(int);
-void renderHorizonSky();
 void storeObjTransformByOpcode();
 int far advanceModelPointerLod();
 int far renderSortedListFar();
@@ -45,6 +43,7 @@ int far flushSpanDirtyRect();
 int far resetScanlineSpans();
 int far clipAndRasterizeEdge();
 void __cdecl __far setupInstrumentLayoutFar();
+void __cdecl __far drawInstrumentGaugesFar();
 int far initJoystickCalibration();
 void seedJoystickBaseline();
 int far readCalibratedJoystick();
@@ -61,11 +60,17 @@ void setupOverlaySlots(uint16 addr);
 void installCBreakHandler();
 void setTimerIrqHandler();
 void restoreTimerIrqHandler();
+#ifdef NO_ASM
+/* per-tick game work + its registration hook (shared/timer.c + egsys.c); the
+ * verify ASM build runs egcode.asm's own timer ISR instead, so this is NO_ASM. */
+void setTimerTickHook(void (far *fn)(void));
+void far egAdvanceFrameTick(void);
+#endif
 int getTimeOfDay();
 int __cdecl openFile(const char *path, int mode);
 
 #ifdef NO_ASM
-void far projectSceneObject(char *model, int yaw, int pitch, int roll, int posX, int posY, int posZ);
+void far projectSceneObject(char far *model, int yaw, int pitch, int roll, int posX, int posY, int posZ);
 #else
 void far projectSceneObject();
 #endif

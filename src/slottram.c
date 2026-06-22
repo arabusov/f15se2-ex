@@ -198,13 +198,6 @@ int FAR CDECL gfx_getBlitOffset(void)
     return ((int(FAR*)(void))gfxFarTableExported[30])();
 }
 
-/* Slot 0x1f: gfx_drawLine — coords passed by value (the original takes them in
- * registers; drawLineWrapper marshals the lineX1..lineY2 globals here). */
-void FAR CDECL gfx_drawLine(uint16 x1, uint16 y1, uint16 x2, uint16 y2)
-{
-    ((void(FAR*)(uint16,uint16,uint16,uint16))gfxFarTableExported[31])(x1, y1, x2, y2);
-}
-
 /* Slot 0x20: gfx_setDrawColor */
 void FAR CDECL gfx_setDrawColor(void)
 {
@@ -233,12 +226,6 @@ void FAR CDECL gfx_nop23(void)
 void FAR CDECL gfx_plotPixel(void)
 {
     ((void(FAR*)(void))gfxFarTableExported[36])();
-}
-
-/* Slot 0x25: gfx_dirtyRect */
-void FAR CDECL gfx_dirtyRect(void)
-{
-    ((void(FAR*)(void))gfxFarTableExported[37])();
 }
 
 /* Slot 0x26: gfx_storePageSeg */
