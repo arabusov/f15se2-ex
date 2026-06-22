@@ -30,6 +30,7 @@ int main(int argc, char* argv[]) {
         SDL_Quit();
         return -1;
     }
+    SDL_SetRenderVSync(renderer, 1);
 
     // SDL_LOGICAL_PRESENTATION_STRETCH will stretch your 320x200 to fill the window.
     if (!SDL_SetRenderLogicalPresentation(renderer, LOGICAL_WIDTH, LOGICAL_HEIGHT, 
