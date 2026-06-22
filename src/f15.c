@@ -187,9 +187,7 @@ int end_main(void);
  * otherwise their stage falls through to the FATAL below. */
 static int game_dispatch(const char* filename) {
     if (filename == GAME_MENU)       return start_main();
-#ifdef ENABLE_EGAME
     if (filename == GAME_FLIGHT)     return egame_main();
-#endif
 #ifdef ENABLE_END
     if (filename == GAME_DEBRIEFING) return end_main();
 #endif

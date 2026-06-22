@@ -527,7 +527,7 @@ void drawHudWorldOverlay(void) {
         setDrawColor(0x0f);
         drawTargetBox(vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo, 8, 0);
     } else if (g_targetSlots[0].planeIndex == g_groundTargetLock) {
-        drawStringActivePage((char *)aPrimaryTarget, 0xec, 0x8e, 0x0f);
+        drawStringActivePage((char *)egPrimaryTarget, 0xec, 0x8e, 0x0f);
     } else if (g_targetSlots[1].planeIndex == g_groundTargetLock) {
         drawStringActivePage((char *)aSecondaryTarget, 0xec, 0x8e, 0x0f);
     } else if (!(frameTick & 1) &&

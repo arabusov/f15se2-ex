@@ -698,18 +698,18 @@ void FAR CDECL gfx_setDrawColor(uint16 color)
     gfx_getState()->fillColor = (uint8)color;
 }
 void FAR CDECL gfx_nop23(void) { return; }
-/* Slot 0x25/0x28: register-called via the _gfx_dirtyRect2 shim — BX = near offset
- * of the per-row dirtyMinBuf (in the caller's DS), AX = yMin, CX = yMax. The
- * matching dirtyMaxBuf sits 0x1b8 bytes after dirtyMinBuf. For each row y in
- * [yMin..yMax] fill the span [minBuf[y]..maxBuf[y]] of curPageSeg with fillColor.
- * This is the actual rectangle clear behind clearRect (MGRAPHIC slot 0x25==0x28).
- * A row whose min==max==0 or ==0x13F is treated as empty and skipped, matching
- * the original's range guard. */
-void FAR CDECL gfx_dirtyRect2(uint16 minBufOff, uint16 yMin, uint16 yMax)
+/* Slot 0x25/0x28: fill the per-row dirty spans. minBuf points at the per-row
+ * dirtyMinBuf; the matching dirtyMaxBuf sits 0x1b8 bytes after it. For each row
+ * y in [yMin..yMax] fill the span [minBuf[y]..maxBuf[y]] of curPageSeg with
+ * fillColor. This is the actual rectangle clear behind clearRect (MGRAPHIC slot
+ * 0x25==0x28). A row whose min==max==0 or ==0x13F is treated as empty and
+ * skipped, matching the original's range guard. (The DOS build passed BX = a
+ * near offset into the caller's DS; the merged build passes a real pointer.) */
+void FAR CDECL gfx_dirtyRect2(const int16 *spanMinBuf, uint16 yMin, uint16 yMax)
 {
     GfxState FAR *s = gfx_getState();
-    const uint16 *minBuf = (const uint16 *)minBufOff;          /* caller's DS */
-    const uint16 *maxBuf = (const uint16 *)(minBufOff + 0x1b8);
+    const uint16 *minBuf = (const uint16 *)spanMinBuf;
+    const uint16 *maxBuf = (const uint16 *)((const char *)spanMinBuf + 0x1b8);
     uint8 fill = s->fillColor;
     uint16 seg = s->curPageSeg;
     int16 firstRow = (int16)yMin;   /* AX */

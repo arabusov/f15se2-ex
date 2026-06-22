@@ -248,7 +248,7 @@ int clampRange(int value, int minVal, int maxVal) { /* Original: rng(x,a,b). Cla
 }
 
 // ==== seg000:0xcf8e ====
-int clampValue(int value, int minVal, int maxVal) { /* Original: rng2(x,a,b). Plain clamp between min and max. */
+int egClampValue(int value, int minVal, int maxVal) { /* Original: rng2(x,a,b). Plain clamp between min and max. */
     if (value > maxVal) {
         return maxVal;
     }

@@ -157,9 +157,7 @@ set(END_SOURCES
     ${SRC_DIR}/endata.c
 )
 
-if(ENABLE_EGAME)
-    list(APPEND F15SE2_SOURCES ${EGAME_SOURCES})
-endif()
+list(APPEND F15SE2_SOURCES ${EGAME_SOURCES})
 if(ENABLE_END)
     list(APPEND F15SE2_SOURCES ${END_SOURCES})
 endif()
@@ -183,13 +181,8 @@ target_include_directories(f15se2 BEFORE PRIVATE
     ${SRC_DIR}/shared
 )
 
-target_compile_definitions(f15se2 PRIVATE USE_SDL3)
-
 # Tell f15.c's game_dispatch() which sub-program entry points are compiled in,
 # so it only dispatches (and references) the ones that are present.
-if(ENABLE_EGAME)
-    target_compile_definitions(f15se2 PRIVATE ENABLE_EGAME)
-endif()
 if(ENABLE_END)
     target_compile_definitions(f15se2 PRIVATE ENABLE_END)
 endif()

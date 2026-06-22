@@ -25,7 +25,7 @@
 #include <string.h>
 
 /* Private helpers for this translation unit. */
-void __cdecl drawStringCentered(int16 *, const char *, int, int, int);
+void __cdecl egDrawStringCentered(int16 *, const char *, int, int, int);
 void renderHudFrame();
 int mapXToScreen();
 int mapYToScreen();
@@ -540,21 +540,21 @@ void fillPanelBox(int panelId, int color) {
 
 // ==== seg000:0xa0cb ====
 void drawStringBothPages(const char *text, int screenX, int screenY, int color) {
-    drawStringCentered(g_pageFront, text, screenX, screenY, color);
-    drawStringCentered(g_pageBack, text, screenX, screenY, color);
+    egDrawStringCentered(g_pageFront, text, screenX, screenY, color);
+    egDrawStringCentered(g_pageBack, text, screenX, screenY, color);
 }
 
 // ==== seg000:0xa0fe ====
 void drawStringActivePage(const char *text, int screenX, int screenY, int color) {
     if (g_drawPage == 0) {
-        drawStringCentered(g_pageFront, text, screenX, screenY, color);
+        egDrawStringCentered(g_pageFront, text, screenX, screenY, color);
     } else {
-        drawStringCentered(g_pageBack, text, screenX, screenY, color);
+        egDrawStringCentered(g_pageBack, text, screenX, screenY, color);
     }
 }
 
 // ==== seg000:0xa13a ====
-void drawStringCentered(int16* strStruct, const char *text, int screenX, int screenY, int color) {
+void egDrawStringCentered(int16* strStruct, const char *text, int screenX, int screenY, int color) {
     strStruct[6] = 0;
     strStruct[4] = screenX;
     strStruct[5] = screenY;

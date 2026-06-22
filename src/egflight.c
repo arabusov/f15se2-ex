@@ -225,11 +225,11 @@ switch_break:
         headingErr = (g_autopilotEngaged != 0) ? (int16)((g_missionTick & 0xF) << 8) - 0x800
                                    : 0;
 
-        headingErr = clampValue(headingErr - g_ourHead + g_waypointBearing, 0xEC00, 0x1400) * 2;
+        headingErr = egClampValue(headingErr - g_ourHead + g_waypointBearing, 0xEC00, 0x1400) * 2;
 
         g_rollInput = -clampRange((headingErr - g_ourRoll) >> 6, -24, 24);
 
-        tmpVal = clampValue(((g_autopilotAltitude - g_viewZ) << 4) - g_rollPitchTrim, 0xEC00, 0xC00);
+        tmpVal = egClampValue(((g_autopilotAltitude - g_viewZ) << 4) - g_rollPitchTrim, 0xEC00, 0xC00);
 
         g_pitchInput = clampRange((tmpVal - g_ourPitch) >> 7, -8, 8);
 
@@ -295,7 +295,7 @@ switch_break:
             bearing = computeBearing(dx - g_viewX_, g_viewY_ - dy);
             knotsScale = (int16)g_knots / 16;
 
-            headingErr = clampValue(bearing - g_ourHead, (-knotsScale) << 8, knotsScale << 8) * 2;
+            headingErr = egClampValue(bearing - g_ourHead, (-knotsScale) << 8, knotsScale << 8) * 2;
 
             if (g_inLandingCorridor != 0)
             {
@@ -307,7 +307,7 @@ switch_break:
             g_setThrust = clampRange((abs(headingErr) / 256) + (tmpVal / 64), 35, 80);
             UpdateThrottleState();
 
-            tmpVal = clampValue(((tmpVal - g_viewZ) >> 3) + (g_rollPitchTrim >> 7), -24, 24);
+            tmpVal = egClampValue(((tmpVal - g_viewZ) >> 3) + (g_rollPitchTrim >> 7), -24, 24);
 
             g_pitchInput = clampRange(tmpVal - (g_ourPitch >> 7), -16, 16);
 

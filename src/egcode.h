@@ -56,7 +56,6 @@ int far restoreInt9Handler();
 int int9Handler();
 extern long _aNlmul(long, long);
 
-void setupOverlaySlots(uint16 addr);
 void installCBreakHandler();
 void setTimerIrqHandler();
 void restoreTimerIrqHandler();

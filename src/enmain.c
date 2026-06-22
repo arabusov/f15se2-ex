@@ -37,8 +37,6 @@ int end_main(void) {
     FP_OFF(commData) = 0;
     FP_SEG(gameData) = commSeg;
     FP_OFF(gameData) = COMM_GAMEDATA_OFFSET;
-    setupOverlaySlots(commData->gfxOvlAddr);
-    setupOverlaySlots(commData->miscOvlAddr);
     misc_clearKeyFlags();
     clearKeybuf();
     hercFlag = (char)commData->setupMono;

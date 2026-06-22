@@ -253,7 +253,7 @@ extern uint8 aDestroyedByGun[];
 extern uint8 aHitByGunfire[];
 extern uint8 aDestroyedByG_0[];
 extern char aAt_0[];
-extern uint8 aPrimaryTarget[];
+extern uint8 egPrimaryTarget[];
 extern uint8 aSecondaryTarget[];
 extern uint8 aNoTarget[];
 extern uint8 aNoTarget_0[];

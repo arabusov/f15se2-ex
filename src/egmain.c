@@ -56,9 +56,6 @@ int egame_main(void) {
         *(int far *)((char far *)commData - 4), *(int far *)((char far *)commData - 2)));
 #endif
     TRACE(("egame main: setup overlays"));
-    setupOverlaySlots(commData->gfxOvlAddr);
-    setupOverlaySlots(commData->miscOvlAddr);
-    setupOverlaySlots(commData->sndOvlAddr);
     hercFlag = commData->setupMono;
     gfxModeUnset = commData->gfxModeNum == 0;
     TRACE(("egame main: install cbreak"));

@@ -54,30 +54,6 @@ void runGameLoop(void)
     gameMainLoop();
 }
 
-int __cdecl openFile(const char *path, int mode)
-{
-    union REGS r;
-    struct SREGS s;
-    segread(&s);
-    r.h.ah = 0x3D;
-    r.h.al = (unsigned char)mode;
-    r.x.dx = (uint16)path;          /* near pointer: DS already = DGROUP */
-    intdosx(&r, &r, &s);
-    return r.x.cflag ? -1 : r.x.ax;
-}
-
-int createFile(const char *path, int attr)
-{
-    union REGS r;
-    struct SREGS s;
-    segread(&s);
-    r.h.ah = 0x3C;
-    r.x.cx = attr;
-    r.x.dx = (uint16)path;
-    intdosx(&r, &r, &s);
-    return r.x.cflag ? -1 : r.x.ax;
-}
-
 void closeFile(int handle)
 {
     union REGS r;

@@ -1,21 +1,13 @@
 /*
- * egregsh.c — native/64-bit replacement for egregsh.asm.
+ * egregsh.c — native/64-bit replacements for the egame-side cdecl spellings of
+ * a few MGRAPHIC slots: gfx_dirtyRect (0x25), gfx_drawGlyphStr (the 0x01-0x06
+ * clipped glyph engine) and gfx_setCurPageSegReg (0x0f).
  *
- * In the DOS egame.exe build, egregsh.asm provides the cdecl->register shims the
- * C renderer uses to reach the real register-called MGRAPHIC slots — gfx_drawLine
- * (0x1f), gfx_dirtyRect (0x25), gfx_drawGlyphStr (the 0x01-0x06 glyph engine) and
- * gfx_setCurPageSegReg (0x0f). The 64-bit build has no asm, so the symbols the
- * renderer references would be undefined at link time. This file provides those
- * C stand-ins. It is the egame-side counterpart of gfx_regshim.c, which replaces
- * regshim.asm on the overlay side.
- *
- * The 64-bit build only links/lints — it never runs the overlay — so the bodies
- * forward through the (link-time empty) gfxFarTableExported slot table purely to
- * keep the arguments live (no spurious unused-parameter warnings, which is the
- * whole point of this build) and to document the slot each maps to.
- *
- * gfx_setCurPageSegReg is omitted: its only caller (eghudr.c's fillSpanRect) is
- * itself DOS-only, so the lint never references it.
+ * The DOS build reached these through egregsh.asm's cdecl->register shims and
+ * the gfxFarTableExported trampoline. Both are gone — gfx_impl.c now provides
+ * the real slot functions directly (the "Get things to compile" pass renamed
+ * the *_impl bodies to their real slot names) — so these are thin forwarders to
+ * the real names. gfx_drawLine is no longer defined here: gfx_impl.c owns it.
  */
 
 #include "inttype.h"
@@ -23,16 +15,24 @@
 #include "gfx_impl.h"
 #include "slot.h"
 
-extern GfxFarFn gfxFarTableExported[84];
-
-void FAR CDECL gfx_drawLine(uint16 x1, uint16 y1, uint16 x2, uint16 y2)
-    { ((void(FAR*)(uint16,uint16,uint16,uint16))gfxFarTableExported[31])(x1, y1, x2, y2); }
-
+/* Slot 0x25: flush the per-row dirty spans. eg3drast.c hands us the real span
+ * buffer pointer; gfx_dirtyRect2 (gfx_impl.c) walks rows [yMin..yMax]. */
 void FAR CDECL gfx_dirtyRect(int16 *spanBuf, int yMin, int yMax)
-    { ((void(FAR*)(int16*,int,int))gfxFarTableExported[37])(spanBuf, yMin, yMax); }
+    { gfx_dirtyRect2(spanBuf, (uint16)yMin, (uint16)yMax); }
 
+/* Slots 0x01-0x06: the clipped glyph engine. The egame HUD selects the clip
+ * mode by slot index; map each to the real C glyph function. */
 void FAR CDECL gfx_drawGlyphStr(int16 *desc, const char *str, int slot)
-    { ((void(FAR*)(int16*,const char*,int))gfxFarTableExported[slot])(desc, str, 0); }
+{
+    switch (slot) {
+        case 0x01: gfx_fillDirty(desc, str);       break;
+        case 0x02: gfx_blitTransparent(desc, str); break;
+        case 0x03: gfx_blitVariant(desc, str);     break;
+        case 0x04: gfx_copyBlock(desc, str);       break;
+        case 0x06:
+        default:   gfx_drawStringUnclipped(desc, str); break;
+    }
+}
 
-void FAR CDECL gfx_setCurPageSegReg(uint16 seg)
-    { ((void(FAR*)(uint16))gfxFarTableExported[15])(seg); }
+/* Slot 0x0f: restore curPageSeg by value (was a cdecl->register shim). */
+void FAR CDECL gfx_setCurPageSegReg(uint16 seg) { gfx_setCurPageSeg(seg); }

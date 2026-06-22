@@ -47,7 +47,7 @@ void FAR CDECL gfx_plotPixel();                             /* slot 0x24: plot p
 void FAR CDECL gfx_dirtyRect(int16 *spanBuf, int yMin, int yMax); /* slot 0x25: dirtyRect (reg-called: BX=spanBuf AX=yMin CX=yMax) */
 void FAR CDECL gfx_storePageSeg();                      /* slot 0x26: store page seg */
 void FAR CDECL gfx_setPageSeg();                        /* slot 0x27: pageSegs[idx]=seg */
-void FAR CDECL gfx_dirtyRect2(uint16 minBufOff, uint16 yMin, uint16 yMax); /* slot 0x25/0x28: fill dirty spans */
+void FAR CDECL gfx_dirtyRect2(const int16 *spanMinBuf, uint16 yMin, uint16 yMax); /* slot 0x25/0x28: fill dirty spans */
 void FAR CDECL gfx_switchColor(int16* pageDesc, int x1, int y1, int x2, int y2, int oldColor, int newColor); /* slot 0x29: replace color in rect */
 void FAR CDECL gfx_copyRect(int srcPage, uint16 srcX, uint16 srcY, int dstPage, uint16 dstX, uint16 dstY, int width, int height); /* slot 0x2a: copyRect between pages */
 void FAR CDECL gfx_clearVga();                         /* slot 0x2b: clear physical VGA 0xA000 */

@@ -17,18 +17,18 @@
  * regnStr points at the regn.xxx buffer (the strcpy/fopen target that gets
  * overwritten with the per-theater region file). scenarioPlh[theater] selects
  * the per-theater .xxx region file; aNc_xxx is also passed (cast to int) to
- * gfx_copyRect by egflight.c. */
-uint8 aRegn_xxx[] = "regn.xxx";
-uint8 aLb_xxx[] = "lb.xxx";
-uint8 aPg_xxx[] = "pg.xxx";
-uint8 aVn_xxx[] = "vn.xxx";
-uint8 aMe_xxx[] = "me.xxx";
-uint8 aNc_xxx[] = "nc.xxx";
-uint8 aCe_xxx[] = "ce.xxx";
-uint8 aJp_xxx[] = "jp.xxx";
-uint8 aNa_xxx[] = "na.xxx";
+ * gfx_copyRect by egflight.c. The filenames themselves are defined once in the
+ * main module (stdata.c). */
+extern char aRegn_xxx[];
+extern char aLb_xxx[];
+extern char aPg_xxx[];
+extern char aVn_xxx[];
+extern char aMe_xxx[];
+extern char aNc_xxx[];
+extern char aCe_xxx[];
+extern char aJp_xxx[];
+extern char aNa_xxx[];
 uint8 g_dacSupported = 0;
-uint8 exitCode = 0x81;
 
 int16 gfxModeUnset = 0;
 int16 f15DgtlResult = 0;
@@ -55,35 +55,6 @@ char aWeaponsRepleni[] = "Weapons replenished";
 char aAutomaticLandi[] = "Automatic Landing Engaged";
 /* waypoints: 4 navigation/target waypoints (map X/Y). [0] steerpoint, [3] threat. */
 struct Waypoint waypoints[4];
-
-/* aNone[23]: threat/weapon lethality table indexed by threat type — name,
- * lethality (base lethality/range), dangerTier (damage tier), flags
- * (bit 0 read by egthreat.c). Used to score incoming-threat danger. */
-struct Weapon aNone[23] = {
-    { "None",   0,   0, 0 },
-    { "SA-2",   200, 3, 0 },
-    { "SA-5",   350, 2, 0 },
-    { "SA-8B",  125, 5, 0 },
-    { "SA-10",  320, 7, 1 },
-    { "SA-11",  200, 5, 0 },
-    { "SA-12",  290, 6, 1 },
-    { "SA-13",  125, 3, 0 },
-    { "SA-N-4", 200, 4, 1 },
-    { "SA-N-5", 150, 3, 0 },
-    { "SA-N-6", 320, 6, 1 },
-    { "SA-N-7", 200, 5, 0 },
-    { "Hawk",   175, 6, 1 },
-    { "Rapier", 75,  8, 0 },
-    { "Tiger",  65,  4, 0 },
-    { "Seacat", 200, 2, 0 },
-    { "IL76",   200, 8, 3 },
-    { "",       50,  5, 0 },
-    { "",       70,  6, 0 },
-    { "",       80,  7, 1 },
-    { "",       100, 8, 1 },
-    { "OTH",    500, 5, 1 },
-    { "",       40,  3, 0 },
-};
 
 /* missleSpec[4]: per-loadout-slot {weaponIdx, ammo}; populated at mission start
  * from commData, indexed by missileSpecIndex. */
@@ -287,7 +258,6 @@ int16 g_weaponMarkerBoxX[3] = { 76, 40, 115 };
 int16 g_weaponMarkerSel = 0;
 char aOnPatrol[] = " on patrol";
 char aF15StrikeEagle[] = "F15 Strike Eagle";
-char aAt[] = " at ";
 char aSafeLanding[] = "Safe Landing";
 
 /* Three more 11-word page/viewport descriptors (sub-window regions) reached
@@ -410,20 +380,13 @@ char aOpenErrorOn_3d3_0[] = "Open Error on *.3D3";
 char a15flt_xxx[] = "15FLT.xxx";
 char aBadObjFileFormat_[] = "Bad Obj file format.";
 char aObjectDataTooBig_[] = "Object data too big.";
-char aRb_0[] = "rb";
 char aPhoto_3d3[] = "photo.3d3";
 char aPleaseInsertF15DiskB[] = "Please insert F15 Disk B";
-char aRb_1[] = "rb";
 char aPhoto_3d3_0[] = "photo.3d3";
 char aObjdataOverflow[] = "ObjData overflow";
-char a_3dt[] = ".3dT";
-char aRb_2[] = "rb";
 char aOpenErrorOn_3dt[] = "Open Error on *.3DT";
 char aBadTileFileFormat_[] = "Bad Tile file format.";
-char aTooManyTiles_[] = "Too many tiles.";
 char aTooMuchTileData[] = "Too much tile data";
-char a_3dg[] = ".3dG";
-char aRb_3[] = "rb";
 char aPressKeyWhenReady[] = "  Press a key when ready";
 char a256pit_pic[] = "256pit.PIC";
 char aBadGridFileFormat_[] = "Bad Grid file format.";
@@ -755,7 +718,6 @@ uint8 g_joyRawY = 0;   /* keyboard virtual-stick raw roll axis (int9Handler) */
 /* Normalized/calibrated stick deflection: [0] = pitch, [1] = roll.
    Produced by readCalibratedJoystick (egseg2) or scaled from the keyboard
    raw axes; read by the stick dot and tac map. */
-uint8 joyAxes[2] = {0};
 uint8 aLandingGearRaised[] = "Landing gear raised";
 uint8 aBrakesOn[] = "Brakes on";
 uint8 a_[] = ".";
@@ -900,7 +862,6 @@ char aRear[] = "Rear";
 char aRight[] = "Right";
 char aLeft[] = "Left";
 char a_3d3_0[] = ".3D3";
-char aRb_4[] = "rb";
 /* g_tacmapIndicators: HUD/tac-map indicator descriptor block (156 words). [0..2] are
    the weapon-ammo X positions; [3..22] are four 5-word indicator rectangles
    (x1,y1,x2,y2,color). The remaining tail is additional descriptor tables. */
@@ -1035,7 +996,6 @@ int g_detailLevel;
 int16 g_autoCrashDive;
 int16 g_missionTick;
 uint8 far *g_floppyMotorPtr;
-FILE *fileHandle;
 int16 g_gunFiredFlag;
 int16 g_damageTakenFlag;
 int16 g_threatRefHead;
@@ -1043,7 +1003,6 @@ int16 g_nearestThreatRange;
 
 /* gameData: far pointer to the shared Game struct, set at startup.
  * g_biosPixelX/g_biosPixelY: tacmap screenX/screenY scratch. */
-struct Game far *gameData = 0;
 int16 g_finalThreatScore;
 int16 g_tileEntryCount;
 int16 g_targetEntityCount;
@@ -1104,7 +1063,6 @@ int16 g_liftForce;
 int16 g_wreckFallVel;
 int16 g_camEyeZ;
 int16 g_threatRefY;
-uint8 hercFlag;
 int16 g_viewRoll;
 /* Model/shape LOD cache (754 reserved bytes = 94 8-byte records). eg3dmap
  * appends entries with memcpy (g_tileEntryCount is the live count) and scans
@@ -1138,7 +1096,7 @@ uint8 aDestroyedByGun[] = " destroyed by gunfire";
 uint8 aHitByGunfire[] = "Hit by gunfire";
 uint8 aDestroyedByG_0[] = " destroyed by gunfire";
 char aAt_0[] = " at ";
-uint8 aPrimaryTarget[] = "Primary Target";
+uint8 egPrimaryTarget[] = "Primary Target";
 uint8 aSecondaryTarget[] = "Secondary Target";
 uint8 aNoTarget[] = "No Target";
 uint8 aNoTarget_0[] = "No Target";
@@ -1251,7 +1209,6 @@ int16 *g_overlayCenterY;
 int16 g_aamSeekerX;
 
 /* commData: far pointer to the shared inter-process game-state record. */
-struct GameComm far *commData = 0;
 int16 g_threatRadarFlag;
 int16 g_aamSeekerY;
 int g_jiffiesPerFrame;
@@ -1267,7 +1224,6 @@ int16 g_climbRate;
 size_t size3d3_7;
 
 char a_3d3[] = ".3D3";
-char aRb[] = "rb";
 
 /* ===== HUD gauge data =====
  * g_tapeDigitStrip: speed/altitude tape digit strip (ASCII pairs blitted as labels). */
