@@ -1,0 +1,11 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "base-ninja",
+      "displayName": "Default Config",
+      "binaryDir": "build",
+      "generator": "Ninja"
+    }
+  ]
+}

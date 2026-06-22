@@ -1,87 +1,47 @@
-# F-15 Strike Eagle 2 source code reconstruction
+# F-15 Strike Eagle 2 source port
 
-This is a work in progress project to reconstruct the source code for the MS-DOS version of the Microprose game F-15 Strike Eagle 2 v451.03 (the definitive 1991 Desert Storm expansion disk version).
+This is a work in progress project to port, fix and enhance the [reconstructed source code](https://github.com/neuviemeporte/f15se2-re) of the Microprose game F-15 Strike Eagle 2 v451.03 (the definitive 1991 Desert Storm expansion disk version) on modern architectures.
 
-The original game was written in a mixture of C and assembly. The C source code was compiled with the Microsoft C compiler v5.1.
+Unlike the old project, whose aim was a bug-for-bug, instruction-level faithful recreation of the game for the orginal MS-DOS platform and the MS C v5.1 compiler, here we aim to keep as much of the game's spirit intact, while taking it forward into the 21st century with modern language features, better graphics and enhanced features.
 
-The reconstruction aims to be bug-for-bug faithful, and the C routines yield code that's identical to the original at the CPU instruction level (when compiled with the same compiler with appropriate flags), while allowing for layout differences in the executables.
+This is still in an extremely early stage, code needs moving from the old project and adapting into the new framework, which will happen gradually.
 
-Given the fact that this game shares a lot of DNA with the game that preceeded it (F-19) and the one that came after (F-117), there is probably a lot of overlap, and this effort might lead to supporting those games in the future.
+The project is based on the [SDL3 library](https://github.com/libsdl-org/SDL/releases) for the graphical frontend. Initially, we're going to keep the original, software-based 3d rendering engine that outputs to a flat framebuffer, but the goal is to switch to a modern 3D rendering API like OpenGL or Vulkan at some point in the future.
 
-This is just the reconstruction project; porting to a modern OS, potential improvements and bugfixes will be targeted by a separate project in the future.
+## Progress
 
-This repository contains no game assets, executables or other copyrighted material, it's a clean rewrite of the game's source code based on my analysis of the game binaries obtained from the original floppy disks, for preservation and historical research purposes, and as such should fall under the interoperability exemption of the DMCA.
+None, just starting.
 
-Development journal: https://neuviemeporte.github.io/category/f15-se2
+## Building
 
-# Executables
+The build system is [CMake](https://cmake.org/download/) with [Ninja](https://github.com/ninja-build/ninja/releases) being used as the generator backend. It is intended to be built with Clang. To build, run:
 
-The game contains multiple executables, but only these are targets for source code reconstruction:
+```
+cmake --preset <preset-name>
+cmake --build build
+```
 
-* `f15.com` - the game loader, originally written in obfuscated, self-modifying assembly code which included disk-based copy protection.
-* `su.exe` - the setup executable, lets player pick the video and sound hardware they want to use and does some initialization work
-* `start.exe` - the first stage of the game, handles the intro, mission selection and briefing
-* `egame.exe` - the second stage of the game, the actual 3D flight engine
-* `end.exe` - the third stage of the game with the mission debriefing, loader goes back to `start.exe` afterwards
-* `mgraphic.exe` - the MCGA/VGA video driver overlay, dynamically loaded assembly routines for graphics handling
-* `misc.exe` - utility overlay, several tiny assembly routines mostly for handling keyboard input
+The project includes the default preset `base-ninja` in `CMakePresets.json`. It's possible to manually override platform-specific values for the build using CMake's user presets. For example, to build on Windows using [llvm-mingw](https://github.com/mstorsjo/llvm-mingw), I use this `CMakeUserPresets.json`:
 
-The remaining executables (including sound) are ignored in this project, see the [development journal](https://neuviemeporte.github.io/f15-se2/2022/12/08/firstlook.html) for rationale.
+```
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "windows-clang",
+      "inherits": "base-ninja",
+      "displayName": "Local Windows Clang + SDL3",
+      "environment": {
+        "CC": "D:/utility/llvm-mingw-20260616-ucrt-x86_64/bin/clang.exe",
+        "CXX": "D:/utility/llvm-mingw-20260616-ucrt-x86_64/bin/clang++.exe"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_PREFIX_PATH": "D:/code/SDL3-3.4.10/x86_64-w64-mingw32"
+      }
+    }
+  ]
+}
+```
 
-# Status
-
-As of the time of writing this, the status of the reconstruction is as follows:
-
-## `f15.com`/`su.exe`
-* fully reconstructed into a minimal, functionally equivalent loader executable (`f15.exe`) that works as a drop-in replacement with the original game.
-
-## `start.exe` 
-* all C code has been reconstructed, the executable works with the original game
-* porting of assembly routines into C in progress
-* the data segment is still generated from assembly, all variables need to be moved to C
-* code still contains placeholder names for routines and variables, needs experimentation, refactoring and comments to document the purpose of the code, especially around the mission generator. Work has begun on it already, but some routine/var/struct names are obtained from LLMs, so need to be take with a grain of salt.
-
-## `egame.exe` 
-* all C code has been reconstructed, the executable works with the original game
-* porting of assembly routines into C in progress, some are shared with `start`
-* moving all variables into C in progress
-* likewise refactoring needed
-
-## `end.exe`
-* all C code has been reconstructed, the executable works with the original game
-* porting of assembly routines into C in progress, some are shared with `start/egame`
-* the data segment is still generated from assembly, all variables need to be moved to C
-* likewise refactoring needed
-
-## `mgraphic.exe` 
-* overlay header and overall layout understood
-* minimal functional reimplementation in C completed, needs more testing
-
-## `misc.exe`
-* minimal functional reimplementation in C completed
-
-# Building
-
-Prerequisites:
-
-* you should run the build on Linux or WSL
-* a copy of the MS C v5.1 compiler needs to be placed in the `dos/msc510` directory
-* the `dosbox` emulator must be installed (vanilla dosbox v0.74 works best as it supports headless mode)
-
-Clone the project and run the `build.sh` script. It will download and build additional git submodules as part of the build process.
-
-There is an experimental, non-functional CMake-based 64bit build present, which is mostly used for finding compile-time bugs that are missed by the ancient DOS compiler. You can play with it by running the `build64.sh` script, but mind that the result is not expected to run. A 64bit port is *NOT* in this project's scope.
-
-# Verification
-
-The Makefile contains a target for automatically comparing the reconstruction with the original using the `mzdiff` tool, run `make [-j] verify` to perform the comparison and make sure any changes to the reconstructed source code did not make it divergent. This repo is a place to host a version of the game that is as close to the original as possible, so any contributions, while deeply welcome, need to make sure that consistency is not broken using this mechanism.
-
-For reference, I'm using original binaries with the following MD5 sums to compare against:
-
-* `start.exe`: packed: 320bc386921add664e4c18e86c9d6f90, unpacked: cf6e997ed4582cf82db6ec37d2b1a6fd
-* `egame.exe`: packed: 9466f65ef34ede3e3533db42ab5b06dc, unpacked: ffc191b1caeafc3b6f435795f8ea868e
-* `end.exe`: packed: f1401198c3a5b951dad0387ee3f73e7d, unpacked: e87480263bff1555f59709ce8eca2949
-
-You will need to put these into the `bin` directory before being able to run the verification.
-
-Depending on the unpacker used, the unpacked md5s might not match, but it should not matter if the packed original was the right one.
+With this, I run `cmake --preset windows-clang` followed by `cmake --build build` to obtain `build/f15se2.exe`. It also needs `SDL3.dll` from `SDL3-3.4.10\x86_64-w64-mingw32\bin` in the same directory to run.
