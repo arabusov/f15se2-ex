@@ -44,7 +44,7 @@ void game_init(void) {
 
     commData->needSplash = 1;
     commData->setupUseJoy = 0;
-    commData->setupDetail = 3;
+    commData->setupDetail = 4; /* 4 = extended detail: full LOD + long-range draw distance */
 
     gfx_initState();
     gfx_setMode13();

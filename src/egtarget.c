@@ -46,6 +46,7 @@ void updateTargetLock(void) {
     int p, a, b, range, d, e, marker, idx, depthShift, i, j, k, best, m, n;
     int p0, a0, b0, c0, d0, e0, deadInit, lockedRange, h0;
     int dk;
+    int lodM, planeModelDepth, planeFineDepth;
 
     deadInit = 0;
 
@@ -149,6 +150,15 @@ skip_aam:
         depthShift = 2;
     }
 
+    /* Detail level 4 widens the depth band over which an air contact resolves
+       from a single pixel (the drawViewportLine fallback below) to a full model,
+       reaching -0x100 — the engine's established far model range (cf. the
+       particle/wreck loops, which draw models out to -0x100). Levels 0-3 keep the
+       original -0x20 gate. */
+    lodM = (g_detailLevel >= 4) ? 8 : 1;
+    planeModelDepth = -0x20 * lodM; /* dot -> model gate: -0x20 (normal) / -0x100 (detail 4) */
+    planeFineDepth = -0x10 * lodM;  /* coarse -> fine model: -0x10 (normal) / -0x80 (detail 4) */
+
     /* A2G radar lock range */
     if ((g_airTargetLock & 0x80) && g_airTargetLock != -1) {
         idx = g_airTargetLock - 0x80;
@@ -185,7 +195,7 @@ skip_aam:
 
         g_projDepth >>= depthShift;
 
-        if (g_projDepth > -0x20) {
+        if (g_projDepth > planeModelDepth) {
             if (g_simObjects[idx].alt < 999 && g_nightMode == 0) {
                 marker = 0;
                 if ((g_planeTable.planes[g_closestThreatIndex].flags & 0x200) &&
@@ -202,7 +212,7 @@ skip_aam:
 
             /* Draw the target */
             drawWorldObject(
-                (&aircraftTypes[g_simObjects[idx].spec].viewModelId)[(g_projDepth > -0x10) ? 0 : 1],
+                (&aircraftTypes[g_simObjects[idx].spec].viewModelId)[(g_projDepth > planeFineDepth) ? 0 : 1],
                 g_simObjects[idx].worldX, g_simObjects[idx].worldY, g_simObjects[idx].alt,
                 g_simObjects[idx].heading.w, g_simObjects[idx].pitch,
                 g_simObjects[idx].bank.w, 2 - depthShift);

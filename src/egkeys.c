@@ -80,7 +80,9 @@ void keyDispatch(uint16 scanCode) {
     case 0x2000:
         g_detailLevel--;
         if (g_detailLevel < 0) {
-            g_detailLevel = gfx_getModecode() == 3 ? 3 : 2;
+            /* Level 4 is the modern "extended" detail: full LOD detail plus the
+               long-range terrain/object draw distance (eg3dproj dense walk). */
+            g_detailLevel = gfx_getModecode() == 3 ? 4 : 2;
         }
         strcpy(strBuf, "Detail Level ");
         strcat(strBuf, itoa(g_detailLevel, g_itoaScratch, 10));
@@ -345,12 +347,22 @@ void recalcTimeScale(void) {
 // ==== seg000:0xdb2b ====
 void setupLodDistances(void) {
     int lod;
+    /* Detail level 4 ("extended"): every object keeps its finest model and is
+       never distance-culled, so the long-range terrain still resolves fully.
+       Levels 0-3 use the original per-LOD distance thresholds. */
+    int extended = g_detailLevel >= 4;
     for (lod = 0; lod < 6; lod++) {
-        ((int16 *)(colorLut + 0x10))[lod] = 0x20 << ((char)lod + (char)(g_detailLevel > 2 ? 2 : g_detailLevel));
+        ((int16 *)(colorLut + 0x10))[lod] =
+            extended ? 0x7fff : (0x20 << ((char)lod + (char)(g_detailLevel > 2 ? 2 : g_detailLevel)));
     }
     g_lodDistNear = g_lodDistScale + g_lodDistBase;
     g_lodDistFar = clampRange(g_lodDistScale << 1, 0x1000, 9999);
-    *(int16 *)(colorLut + 0x20) = (g_detailLevel > 2 ? 2 : g_detailLevel) * 0xD05 + 0xD05;
+    /* Object-cull distance: how far an object is drawn at all (eg3drast.c
+       transformAndCullObject). Level 4 lifts it together with the LOD table —
+       otherwise distant planes/buildings/mountains are culled before the LOD
+       pick runs, so the long-range terrain detail would have no visible effect. */
+    *(int16 *)(colorLut + 0x20) =
+        extended ? 0x7fff : ((g_detailLevel > 2 ? 2 : g_detailLevel) * 0xD05 + 0xD05);
 }
 
 // ==== seg000:0xdb9c ====

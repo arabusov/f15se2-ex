@@ -21,6 +21,60 @@
 /* Private helpers for this translation unit. */
 int far transformAndCullObjectFar(int, int, int);
 
+/* Bounds test mirroring process3dg's own clamp (LOD 4 uses a +2 origin offset).
+   Used by the detail-4 extended-radius walk so it never samples off-grid. */
+static int gridTileInBounds(int lod, int col, int row) {
+    if (lod == 4) {
+        col += 2;
+        row += 2;
+    }
+    return col >= 0 && row >= 0 && col < g_lodGridDim[lod] && row < g_lodGridDim[lod];
+}
+
+/* Render every scene object in one grid tile at (tileX+gridX, tileY+gridY).
+   Mirrors the full-detail tile branch of projectObjects' main loop; used only by
+   the extended-radius sampling below. Tiles whose camera-space distance would
+   overflow the Q16 (int32) transform accumulators (integer part capped ±0x7fff)
+   are skipped — rotation preserves length, so a length test bounds every
+   component. 0x7800 leaves margin; this caps the extra reach to a distance
+   sphere that auto-shrinks with altitude, so far tiles never glitch. */
+static void renderGridTile(int lod, int tileX, int tileY, int gridX, int gridY, int fracX, int fracY) {
+    int col = tileX + gridX;
+    int row = tileY + gridY;
+    int cell, subIdx;
+    long mag2;
+    g_objLocalX = fracX - (gridX << 12) - 0x800;
+    g_objLocalY = fracY - (gridY << 12) - 0x800;
+    mag2 = (long)g_objLocalX * g_objLocalX + (long)g_objLocalY * g_objLocalY +
+           (long)g_objLocalZ * g_objLocalZ;
+    if (mag2 >= (long)0x7800 * 0x7800) {
+        return;
+    }
+    setViewPosition(g_objLocalX, g_objLocalY, g_objLocalZ);
+    cell = process3dg(lod, col, row);
+    if (cell == -1) {
+        return;
+    }
+    g_objColorBase = (g_detailLevel == 2) ? 0 : ((unsigned char)lod << 8);
+    g_curTileEntry = matrix3dt_2[lod][cell];
+    for (subIdx = 0; subIdx < matrix3dt[lod][cell]; subIdx++) {
+        if (g_curTileEntry->shape & 0x80) {
+            g_modelStreamPtr = g_world3dData + lookupTileEntry(lod, subIdx, col, row);
+            if (g_modelStreamPtr == (char far *)g_world3dData) {
+                g_modelStreamPtr = g_world3dData + buf3d3[g_curTileEntry->shape & 0x7f];
+            }
+        } else {
+            g_modelStreamPtr = g_world3dData + buf3d3[g_curTileEntry->shape];
+        }
+        projectSceneObject(g_modelStreamPtr, 0, 0, 0,
+                           g_curTileEntry->x,
+                           g_curTileEntry->y,
+                           g_curTileEntry->z);
+        g_curTileEntry++;
+        g_objColorBase++;
+    }
+}
+
 void projectObjects(int heading, int rangeGate, long worldX, long worldY, long worldZ) {
     int gridX;
     int gridY;
@@ -67,6 +121,7 @@ void projectObjects(int heading, int rangeGate, long worldX, long worldY, long w
         if ((unsigned long)scaled < 0x7FFFUL) {
             g_objLocalZ = (int)(((unsigned long)scaled < 2UL) ? 2UL : (unsigned long)scaled);
             for (sampleIdx = 0;; sampleIdx++) {
+                if (g_detailLevel >= 4) break; /* detail 4: the dense walk below replaces this sparse pattern */
                 if (g_curLod == 4 && g_detailLevel >= 2) {
                     if (sampleIdx == 15) {
                         break;
@@ -132,6 +187,24 @@ void projectObjects(int heading, int rangeGate, long worldX, long worldY, long w
                     }
                 }
             next_iter:;
+            }
+            /* Detail level 4: replace the sparse directional ±2 walk above with a
+               dense omnidirectional square out to a fixed radius. This both
+               extends draw distance and fills the directional gaps the sparse
+               pattern leaves around the original range (which otherwise show as
+               objects vanishing then reappearing through their LODs as you
+               approach). Off-grid and Q16-unsafe tiles are skipped in
+               renderGridTile; far tiles still cull inside projectSceneObject. */
+            if (g_detailLevel >= 4) {
+                const int radius = 7;
+                int gx, gy;
+                for (gy = -radius; gy <= radius; gy++) {
+                    for (gx = -radius; gx <= radius; gx++) {
+                        if (gridTileInBounds(g_curLod, tileX + gx, tileY + gy)) {
+                            renderGridTile(g_curLod, tileX, tileY, gx, gy, fracX, fracY);
+                        }
+                    }
+                }
             }
         }
     } while (1);
