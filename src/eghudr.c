@@ -587,7 +587,10 @@ static void drawInstrumentGauges(void) {
                 g_tapeRollOfsA1 = W16(g_timerTickByte + 0x9a + di);
                 g_tapeRollOfsA2 = W16(g_timerTickByte + 0x11a + di);
                 g_tapeRollOfsA3 = W16(g_timerTickByte + 0x19a + di);
-                rollIdx = ((((uint16)g_ourRoll >> 8) + 0x80) >> 2) & 0xff;
+                /* +0x80 wraps in the original's 8-bit register before the >>2,
+                 * keeping rollIdx in 0..63 (one curve); mask the byte sum, not
+                 * the shifted result, or di overruns g_timerTickByte. */
+                rollIdx = ((((uint16)g_ourRoll >> 8) + 0x80) & 0xff) >> 2;
                 di = rollIdx * 2;
                 g_tapeRollOfsB0 = W16(g_timerTickByte + 0x1a + di);
                 g_tapeRollOfsB1 = W16(g_timerTickByte + 0x9a + di);
