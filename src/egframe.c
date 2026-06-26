@@ -58,10 +58,6 @@ void updateFrame(void) {
             g_playerPlaneFlags |= 0x1000;
             *(char far *)&commData->trainingFlag |= 1;
         }
-        i = (unsigned char)commData->sndOvlName[0];
-        if (i == 0x69 || i == 0x49) {
-            g_axisInputAccum[2] = 1;
-        }
         findWaypointFeatures();
         g_threatActiveTimer = 0;
         g_scopeSweepTimer = 1;
@@ -653,8 +649,6 @@ void finalizeMission(int outcome) {
     }
     commData->worldX = g_viewX_;
     commData->worldY = g_viewY_;
-    commData->bombDamage = g_bombDamageMask;
-    commData->gunHits = g_gunHits;
     commData->weaponCount[0] = g_finalThreatScore;
     commData->weaponCount[1] = g_resupplyCount;
     appendMapEvent(8, 0);

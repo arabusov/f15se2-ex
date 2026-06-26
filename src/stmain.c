@@ -95,7 +95,6 @@ int start_main(void) {
     gameData->isCampaignMission = 0;
     gameData->campaignProgress = 0;
     gameData->rand = 12345;
-    commData->startDone = 1;
     joyAxes[0] = joyAxes[1] = JOY_CENTER;
     srand(gameData->rand);
     missionGenerate();
@@ -126,7 +125,6 @@ int start_main(void) {
     gameData->missionReady = 1;
     gameData->isCampaignMission = 1;
     gameData->campaignProgress = 0;
-    commData->startDone = 1;
     /* Check if same diff and thea picked as last time */
     if (gameData->difficulty == difficulty && gameData->theater == theater && missionPick == -1 && askRepeatMission() != 0)
         goto doSrand;
@@ -152,7 +150,6 @@ doSrand:
         loadPic("f15.spr", commData->gfxInitResult);
     }
     exportWorldToComm("temp.wld");
-    commData->restartFlag = 0;
     if (gameData->missionReady > 1) {
         commData->trainingFlag = 1;
     } else {
@@ -173,7 +170,6 @@ doSrand:
         loadPic("f15.spr", commData->gfxInitResult);
     }
     exportWorldToComm("temp.wld");
-    commData->restartFlag = 0;
     if (gameData->missionReady > 1) {
         commData->trainingFlag = 1;
     } else {

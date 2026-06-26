@@ -153,7 +153,6 @@ void fireGroundThreat(int planeIdx) {
                                         tempStrcpy(strBuf);
                                         makeSound(6, 2);
                                         scheduleEventCheck(planeIdx + 0x40, 2);
-                                        commData->restartFlag++;
                                     }
                                 }
                             }

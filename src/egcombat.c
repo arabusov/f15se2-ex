@@ -89,7 +89,6 @@ void fireAirThreat(int objIdx) {
                                 tempStrcpy(strBuf);
 
                                 makeSound(6, 2);
-                                commData->restartFlag++;
                                 scheduleEventCheck(objIdx + 0x20, 2);
 
                                 if (randomRange(4) == 0) {
