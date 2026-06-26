@@ -87,6 +87,7 @@ set(F15SE2_SOURCES
     ${SRC_DIR}/biosfunc.c
     ${SRC_DIR}/log.c
     ${SRC_DIR}/gfx_impl.c
+    ${SRC_DIR}/joystick.c
 
     # start
     ${SRC_DIR}/stmain.c

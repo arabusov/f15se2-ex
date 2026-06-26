@@ -20,6 +20,7 @@
 #include "offsets.h"
 #include "gfx.h"
 #include "gfx_impl.h"
+#include "joystick.h"
 
 #include <stdio.h>
 #include <stddef.h>
@@ -91,6 +92,7 @@ int main(int argc, char *argv[]) {
     }
 
     game_init();
+    joy_init();
 
     while (true) {
         int err;
@@ -112,6 +114,7 @@ int main(int argc, char *argv[]) {
         if (!debugDebrief && err != RET_DEBRIEFING) break;
     }
 
+    joy_shutdown();
     gfx_videoShutdown();
     return 0;
 }

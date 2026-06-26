@@ -7,6 +7,7 @@
 #include "pointers.h"
 #include "comm.h"
 #include "const.h"
+#include "joystick.h"
 #include <dos.h>
 #include <SDL3/SDL.h>
 
@@ -60,6 +61,7 @@ static void pumpInput(void) {
      * clock too: this is what drives the tick counters those loops spin on. */
     timerPump();
     while (SDL_PollEvent(&ev)) {
+        joy_handleEvent(&ev);
         switch (ev.type) {
         case SDL_EVENT_QUIT:
             /* Feed the game's own Alt+Q quit path rather than hard-exiting. */
@@ -136,7 +138,7 @@ int far cdecl misc_getKey(void) {
     return code;
 }
 
-int far cdecl misc_readJoystick(int16 param) { return 0; }
+/* misc_readJoystick lives in joystick.c (SDL gamepad/joystick buttons). */
 
 void far cdecl misc_clearKeyFlags(void) {
     pumpInput();

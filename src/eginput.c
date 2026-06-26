@@ -27,6 +27,7 @@
 #include "eginput.h"
 #include "inttype.h"
 #include "gfx.h"
+#include "joystick.h"
 #include <dos.h>
 #include <SDL3/SDL.h>
 
@@ -412,6 +413,113 @@ static void updateStick(void) {
     g_joyRawY = y;
 }
 
+/* Gamepad flight bindings ----------------------------------------------------
+ * The left stick (roll/pitch) and the fire triggers (RT guns, LT missiles) are
+ * read directly by the game through joystick.c. The remaining cockpit actions
+ * are discrete keystrokes, so we feed the corresponding BIOS key word into the
+ * same ring the keyboard uses: stepFlightModel reads one keyScancode per frame
+ * and both it (throttle) and keyDispatch (egkeys.c: weapons, views,
+ * countermeasures, ...) act on it. Everything is edge-triggered (one press =
+ * one keystroke) except thrust, which auto-repeats while held.
+ *
+ * Button layout mirrors the cockpit's physical arrangement:
+ *   Y  cycle weapon    X  afterburner    A  brake    B  designate target
+ *   L1 chaff           R1 flare          Start autopilot   Select landing gear
+ *   L3 cycle radar zoom    R3 eject
+ *   D-pad up/down thrust +/-   D-pad left/right chase cam (F5) / target view
+ *   (F10).  Right stick is a view hat: forward front, left/right/back look that
+ *   way (forward also exits the F5/F10 cams). */
+
+/* Selectable cockpit views and their BIOS key words. keyValue holds the active
+ * view (0 front, 0x42 left, 0x43 right, 0x41 rear). */
+#define VIEW_FRONT_KEY 0x3920 /* space */
+#define VIEW_LEFT_KEY 0x3c00  /* F2 */
+#define VIEW_RIGHT_KEY 0x3d00 /* F3 */
+#define VIEW_REAR_KEY 0x3e00  /* F4 */
+
+/* Rising edge of button b since the last poll. prev state is shared with the
+ * thrust auto-repeat below; a button is driven by only one of the two. */
+static bool gpPrev[SDL_GAMEPAD_BUTTON_COUNT];
+
+static bool gpEdge(SDL_GamepadButton b) {
+    bool now = joy_button(b);
+    bool edge = now && !gpPrev[b];
+    gpPrev[b] = now;
+    return edge;
+}
+
+/* True on press and then every repeat interval while held, for throttle ramps. */
+static bool gpHeldRepeat(SDL_GamepadButton b, Uint64 *nextRepeat) {
+    bool now = joy_button(b);
+    if (!now) {
+        gpPrev[b] = false;
+        return false;
+    }
+    Uint64 t = SDL_GetTicks();
+    if (!gpPrev[b]) {
+        gpPrev[b] = true;
+        *nextRepeat = t + 250; /* hold this long before the first repeat */
+        return true;
+    }
+    if (t >= *nextRepeat) {
+        *nextRepeat = t + 100;
+        return true;
+    }
+    return false;
+}
+
+/* Right stick is a 4-way view hat: push forward/left/right/back to look that
+ * way (forward = front, which also drops you out of the F5/F10 external cams).
+ * Acts only on zone transitions; a centred stick is neutral and makes no
+ * change, so it leaves a D-pad-selected camera alone until you pick a view. */
+static void rightStickView(void) {
+    static int zone = 0; /* last view this stick selected; 0 = centred/neutral */
+    const int GATE = 16000;
+    int x = joy_axisRaw(SDL_GAMEPAD_AXIS_RIGHTX);
+    int y = joy_axisRaw(SDL_GAMEPAD_AXIS_RIGHTY);
+    int ax = x < 0 ? -x : x, ay = y < 0 ? -y : y;
+    int z = 0;
+    if (ay > GATE && ay >= ax) z = (y < 0) ? VIEW_FRONT_KEY : VIEW_REAR_KEY; /* push away / pull back */
+    else if (ax > GATE) z = (x < 0) ? VIEW_LEFT_KEY : VIEW_RIGHT_KEY;
+
+    if (z != zone) {
+        if (z) ringPush(z); /* entering neutral leaves the current view as-is */
+        zone = z;
+    }
+}
+
+static void pollGamepadActions(void) {
+    /* Weapon-select keys 's'/'m'/'g' cycle missileSpecIndex 0->1->2; rotate
+     * through them so one button toggles the loadout. */
+    static const uint16 weaponKeys[3] = {0x1f73, 0x326d, 0x2267};
+    static int weaponSel = 0;
+    static Uint64 thrustUpAt, thrustDownAt;
+
+    if (!joy_isGamepad()) return;
+
+    if (gpEdge(SDL_GAMEPAD_BUTTON_NORTH)) { /* Y: cycle weapon */
+        ringPush(weaponKeys[weaponSel]);
+        weaponSel = (weaponSel + 1) % 3;
+    }
+    if (gpEdge(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER)) ringPush(0x2e63);  /* L1: chaff ('c') */
+    if (gpEdge(SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER)) ringPush(0x2166); /* R1: flare ('f') */
+    if (gpEdge(SDL_GAMEPAD_BUTTON_WEST)) ringPush(0x1e61);          /* X: afterburner ('a') */
+    if (gpEdge(SDL_GAMEPAD_BUTTON_SOUTH)) ringPush(0x3062);         /* A: brake ('b') */
+    if (gpEdge(SDL_GAMEPAD_BUTTON_EAST)) ringPush(0x1474);          /* B: designate target ('t') */
+    if (gpEdge(SDL_GAMEPAD_BUTTON_START)) ringPush(0x1970);         /* Start: autopilot ('p') */
+    if (gpEdge(SDL_GAMEPAD_BUTTON_BACK)) ringPush(0x266c);          /* Select: landing gear ('l') */
+    if (gpEdge(SDL_GAMEPAD_BUTTON_LEFT_STICK)) ringPush(0x1372);    /* L3: cycle radar zoom ('r') */
+    if (gpEdge(SDL_GAMEPAD_BUTTON_RIGHT_STICK)) ringPush(0x011b);   /* R3: eject (Esc) */
+
+    if (gpEdge(SDL_GAMEPAD_BUTTON_DPAD_LEFT)) ringPush(0x3f00);     /* D-pad left: chase cam (F5) */
+    if (gpEdge(SDL_GAMEPAD_BUTTON_DPAD_RIGHT)) ringPush(0x4400);    /* D-pad right: target view (F10) */
+    rightStickView();
+
+    /* Thrust ramps while up/down is held. */
+    if (gpHeldRepeat(SDL_GAMEPAD_BUTTON_DPAD_UP, &thrustUpAt)) ringPush(0x0d3d);     /* '=' */
+    if (gpHeldRepeat(SDL_GAMEPAD_BUTTON_DPAD_DOWN, &thrustDownAt)) ringPush(0x0c2d); /* '-' */
+}
+
 /* Drain the SDL event queue into the key ring and refresh the virtual stick.
  * Called from every kbhit()/egReadKey() the flight loop makes, so input and
  * the window stay current frame by frame. */
@@ -419,6 +527,7 @@ static void pumpInput(void) {
     SDL_Event ev;
     timerPump();
     while (SDL_PollEvent(&ev)) {
+        joy_handleEvent(&ev);
         switch (ev.type) {
         case SDL_EVENT_QUIT:
             ringPush(0x1000); /* feed Alt+Q so the mission quits cleanly */
@@ -439,6 +548,7 @@ static void pumpInput(void) {
         }
     }
     updateStick();
+    pollGamepadActions();
 }
 
 /* Blocking read, scan code in AH and ASCII in AL (INT 16h function 0). The

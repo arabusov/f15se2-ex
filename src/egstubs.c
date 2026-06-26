@@ -10,18 +10,7 @@
 
 int loadF15DgtlBin() { return 0; }
 
-// === Joystick/Input Stubs ===
-int far initJoystickCalibration() { return 0; }
-void seedJoystickBaseline() {}
-int far readCalibratedJoystick() {
-    joyAxes[0] = 0x80;
-    joyAxes[1] = 0x80;
-    return 0;
-}
-void readJoystickHardware() {}
-void computeJoystickAxis() {}
-int far restoreJoystickData(uint8 FAR *ptr) { return 0; }
-
+/* Joystick input lives in joystick.c (SDL gamepad/joystick). */
 /* setInt9Handler/restoreInt9Handler (the keyboard ISR) live in eginput.c. */
 
 /* --- functions declared in egcode.h --- */

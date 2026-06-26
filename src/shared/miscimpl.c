@@ -24,10 +24,7 @@ void installCBreakHandler(void) {
 void restoreCbreakHandler(void) {
 }
 
-void pollJoystick(void) {
-}
-
-void far copyJoystickData(uint8 *ptr) {}
+/* pollJoystick / copyJoystickData live in joystick.c (SDL gamepad/joystick). */
 
 void mystrcat(char *dst, const char *src) {
     strcat(dst, src);
