@@ -32,7 +32,7 @@ uint8 g_dacSupported = 0;
 
 int16 f15DgtlResult = 0;
 char *regnStr = aRegn_xxx;
-extern const char *scenarioPlh[8] = {
+const char *scenarioPlh[8] = {
     "lb.xxx", "pg.xxx", "vn.xxx", "me.xxx",
     "nc.xxx", "ce.xxx", "jp.xxx", "na.xxx"};
 
@@ -502,8 +502,7 @@ extern const uint8 g_colorPalettes[64] = {
     0x4, 0x3, 0x4, 0x4, 0x4, 0x4, 0x4, 0x4, 0x4, 0x4, 0x3, 0x4, 0x4, 0x4, 0x4, 0x4};
 struct NeighborSampling g_neighborSampling = {
     {-1, 1, 1, -1, 0, 1, 0, -1, 0},
-    {1, 1, -1, -1, 1, 0, -1, 0, 0, -8192, -4096},
-    {0, 0x1000, 0x2000}};
+    {1, 1, -1, -1, 1, 0, -1, 0, 0}};
 
 /* Projection vertex-offset table for process3dg LOD expansion (eg3dproj),
    indexed (char*)&g_dirGridOffsets + f*2 + 18*row. */

@@ -56,9 +56,9 @@ void updateFrame(void) {
             gameData->difficulty = 2;
             g_autopilotEngaged = 1;
             g_playerPlaneFlags |= 0x1000;
-            *(char far *)((char far *)commData + 0x30) |= 1;
+            *(char far *)&commData->trainingFlag |= 1;
         }
-        i = (unsigned char)*((char far *)commData + 0x0d);
+        i = (unsigned char)commData->sndOvlName[0];
         if (i == 0x69 || i == 0x49) {
             g_axisInputAccum[2] = 1;
         }
@@ -104,7 +104,7 @@ void updateFrame(void) {
         gameData->unk4 = 1;
         g_detailLevel = commData->setupDetail;
         setupLodDistances();
-        *(int far *)((char far *)commData + 0x26) = 1;
+        commData->landingType = 1;
         g_gunAmmo = 1000;
         if (g_missionStatus == 0 || g_autopilotEngaged != 0) {
             g_northSouthSign = ((unsigned)(g_viewY_ - waypoints[1].mapY) < 0x8000u) ? 1 : -1;
@@ -339,7 +339,7 @@ skip_target_section:
                 }
                 g_velocity = 5400;
                 g_altitude -= (g_altitude - g_groundAltitude) / i;
-                if (g_altitude < g_groundAltitude + 5) {
+                if (g_altitude < (unsigned)(g_groundAltitude + 5)) {
                     g_altitude = g_groundAltitude + 5;
                 }
                 g_ViewX -= (g_ViewX - ((long)g_planeTable.planes[g_closestThreatIndex].mapX << 5)) / (long)i;
@@ -651,10 +651,10 @@ void finalizeMission(int outcome) {
     } else {
         commData->landingType = 1;
     }
-    *(int16 far *)((char far *)commData + 0x74) = g_viewX_;
-    *(int16 far *)((char far *)commData + 0x76) = g_viewY_;
-    *(int16 far *)((char far *)commData + 0x34) = g_bombDamageMask;
-    *(int16 far *)((char far *)commData + 0x36) = g_gunHits;
+    commData->worldX = g_viewX_;
+    commData->worldY = g_viewY_;
+    commData->bombDamage = g_bombDamageMask;
+    commData->gunHits = g_gunHits;
     commData->weaponCount[0] = g_finalThreatScore;
     commData->weaponCount[1] = g_resupplyCount;
     appendMapEvent(8, 0);

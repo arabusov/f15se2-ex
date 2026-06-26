@@ -59,7 +59,7 @@ void fireAirThreat(int objIdx) {
 
                 idx = g_simObjects[objIdx].weaponType;
 
-                if (sams[idx].lockRange > (acqRange >> 1)) {
+                if ((unsigned)sams[idx].lockRange > (acqRange >> 1)) {
                     if ((unsigned)(-(g_missionStatus * 3 - 0x10)) < acqRange) {
                         if (acqRange < 0x1000) {
                             if (idx != 0) {
@@ -216,7 +216,7 @@ void updateThreatTargeting(void) {
                             acq = samCanAcquireTarget(slot, g_simObjects[scan].posX,
                                                       g_simObjects[scan].posY,
                                                       g_simObjects[scan].alt, mode);
-                            if (g_acqRange < best && acq != 0) {
+                            if ((unsigned)g_acqRange < best && acq != 0) {
                                 aimY = g_acqAimY;
                                 best = g_acqRange;
                                 bestIdx = scan;
@@ -242,7 +242,7 @@ void updateThreatTargeting(void) {
                                  (mode != 5 && !(g_planeTable.planes[scan].flags & 8))) &&
                                 (acq = samCanAcquireTarget(slot, g_planeTable.planes[scan].mapX,
                                                            g_planeTable.planes[scan].mapY, 0, mode),
-                                 g_acqRange < best && acq != 0)) {
+                                 (unsigned)g_acqRange < best && acq != 0)) {
                                 aimY = g_acqAimY;
                                 best = g_acqRange;
                                 bestIdx = scan;
@@ -420,7 +420,7 @@ void updateThreatTargeting(void) {
                     } else {
                         if (missileTargetCompat(g_projectiles[slot].weaponIdx, bestIdx) >
                                 randomRange(4) ||
-                            (unsigned)(g_frameRateScaling * 10) <= g_savedSamTtl) {
+                            (unsigned)(g_frameRateScaling * 10) <= (unsigned)g_savedSamTtl) {
                             destroyGroundTarget(bestIdx);
                         } else {
                             strcpy(strBuf, "Ineffective");

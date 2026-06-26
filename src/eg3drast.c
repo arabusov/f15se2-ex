@@ -303,7 +303,7 @@ static void skipDisplayListByLod(unsigned char far **pp) {
         if (dist <= *(int16 *)(colorLut + 0x10 + bx)) {
             p += 3;
         } else {
-            p += *(int16 far *)(p + 1);
+            p += rdI16(p + 1);
         }
     }
     *pp = p;
@@ -330,13 +330,13 @@ void storeObjTransformByOpcode(void) {
 /* ===================================================================== */
 static int testVisibilityMask(unsigned char far **pp) {
     unsigned char far *p = *pp;
-    int lo = *(int16 far *)p;
+    int lo = rdI16(p);
     int r;
     p += 2;
     if (g_modelWideVtxFlag == 0) {
         r = lo & g_vtxSignMaskLo;
     } else {
-        int hi = *(int16 far *)p;
+        int hi = rdI16(p);
         p += 2;
         r = (lo & g_vtxSignMaskLo) | (hi & g_vtxSignMaskHi);
     }
@@ -1275,7 +1275,7 @@ static void renderPrimitiveList(unsigned char far *p) {
             for (;;) {
                 unsigned char far *runp;
                 g_primRunCount = cnts[ai];
-                runp = dataBase + *(int16 far *)(coord + ai * 2);
+                runp = dataBase + rdI16(coord + ai * 2);
                 do {
                     renderPrimitiveCommand(&runp);
                 } while (--g_primRunCount != 0);
@@ -1892,13 +1892,13 @@ static void rotatePoint3d(int relZ, int relY, int relX, unsigned char far **pp) 
         for (i = 0; i < cnt; i++) {
             int fnx, fny, fnz, thr;
             long dot;
-            fnx = *(int16 far *)p;
+            fnx = rdI16(p);
             p += 2;
-            fny = *(int16 far *)p;
+            fny = rdI16(p);
             p += 2;
-            fnz = *(int16 far *)p;
+            fnz = rdI16(p);
             p += 2;
-            thr = *(int16 far *)p;
+            thr = rdI16(p);
             p += 2;
             dot = imul16(fnx, g_objDirX) + imul16(fny, g_objDirZ) + imul16(fnz, g_objDirY);
             if (dot < (long)thr) {
@@ -1966,9 +1966,9 @@ static void transformVertexList(unsigned char far **pp) {
         int loopEnd = (al & 0x7f) * 4;
         for (bx = 0; bx < loopEnd; bx += 4) {
             int vis = testVisibilityMask(&p);
-            int vx = *(int16 far *)p;
-            int vy = *(int16 far *)(p + 2);
-            int vz = *(int16 far *)(p + 4);
+            int vx = rdI16(p);
+            int vy = rdI16(p + 2);
+            int vz = rdI16(p + 4);
             p += 6;
             if (!vis) continue;
             emitModelVertex(bx, vx, vy, vz);

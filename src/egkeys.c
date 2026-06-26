@@ -117,10 +117,9 @@ void keyDispatch(uint16 scanCode) {
         }
         break;
     case 0x2f00:
-        /* The original source pre-increments in place (compiles to `inc [mem]`);
-         * keep this form for byte-exact match even though it is formally
-         * unsequenced. Both writes store the same final value, (old+1)&3. */
-        g_axisInputAccum[2] = ++g_axisInputAccum[2] & 3;
+        /* Original pre-increments in place (`inc [mem]`); the well-defined
+         * equivalent stores the same final value, (old+1)&3. */
+        g_axisInputAccum[2] = (g_axisInputAccum[2] + 1) & 3;
         strcpy(strBuf, "Sounds ");
         strcat(strBuf, itoa(3 - g_axisInputAccum[2], g_itoaScratch, 10));
         tempStrcpy(strBuf);
@@ -134,7 +133,7 @@ void keyDispatch(uint16 scanCode) {
     case 0x1400:
         g_playerPlaneFlags ^= 0x1000;
         if (g_playerPlaneFlags & 0x1000) {
-            *((char far *)commData + 0x30) |= 1;
+            *(char far *)&commData->trainingFlag |= 1;
         }
         break;
     case 0x1f73:
@@ -245,7 +244,7 @@ void keyDispatch(uint16 scanCode) {
             if ((abs((int16)g_ourRoll) >> 5) + (abs(g_ourPitch) >> 5) + g_knots > randomRange(500) + 500) {
                 finalizeMission(6);
             } else {
-                *(int far *)((char far *)commData + 0x26) = 2;
+                commData->landingType = 2;
             }
             g_ejectState = 1;
             g_crashCamX = g_viewX_;

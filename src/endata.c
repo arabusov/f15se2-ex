@@ -4081,7 +4081,7 @@ struct WeaponDataBlock weaponDataBlock = {
      0xFE, 0xFF, 0x00, 0x00, 0x00, 0x00}};
 
 /* Rank name pointer table (index 0 = empty, 1-6 = promotable ranks) */
-extern const char *rankNames[] = {
+const char *rankNames[] = {
     "",
     "1st Lieutenant.",
     "Captain.",
@@ -4091,7 +4091,7 @@ extern const char *rankNames[] = {
     "General."};
 
 /* Medal name pointer table */
-extern const char *medalNames[] = {
+const char *medalNames[] = {
     "Air Force Commendation Medal.",
     "Distinguished Flying Cross.",
     "Silver Star.",
@@ -4250,7 +4250,7 @@ int vgaBufOffset;
 void *vgaBufSeg2;
 
 /* Theater sprite filename pointer table (8 entries) */
-extern const char *theaterSprFiles[] = {
+const char *theaterSprFiles[] = {
     "libya.spr",
     "persian.spr",
     "vn.spr",
@@ -4261,7 +4261,7 @@ extern const char *theaterSprFiles[] = {
     "na.spr"};
 
 /* Debrief menu string pointer table (2 entries) */
-extern const char *debriefMenuStrings[] = {
+const char *debriefMenuStrings[] = {
     "Review Mission",
     "Exit Debriefing"};
 

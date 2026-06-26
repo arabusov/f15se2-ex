@@ -218,8 +218,8 @@ void pilotToGameData(const uint8 *pilotData) {
     for (charIdx = 0; 1; charIdx++) {
         if ((gameData->pilotName[charIdx] = pilotData[charIdx]) == '\0') break;
     }
-    gameData->totalScore = *(const uint32 *)(pilotData + ROSTER_SCORE_LO);
-    gameData->lastScore = *(const uint16 *)(pilotData + ROSTER_LASTSCORE);
+    gameData->totalScore = rdU32(pilotData + ROSTER_SCORE_LO);
+    gameData->lastScore = rdU16(pilotData + ROSTER_LASTSCORE);
     gameData->theater = *(pilotData + ROSTER_THEATER);
     gameData->difficulty = *(pilotData + ROSTER_DIFFICULTY);
     gameData->rank = *(pilotData + ROSTER_UNK1) & 0xf;

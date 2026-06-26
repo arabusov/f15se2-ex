@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
         const size_t len = strlen(arg);
         if (len < 3 || arg[0] != '/' || tolower(arg[1]) != 'd')
             LogCritical(("Unrecognized argument: '%s'", arg));
-        for (charIdx = 2; charIdx < len; ++charIdx) {
+        for (charIdx = 2; (size_t)charIdx < len; ++charIdx) {
             switch (arg[charIdx]) {
             case '1':
                 debugMenu = true;

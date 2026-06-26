@@ -23,7 +23,8 @@
 #include "gfx.h"
 #include "pointers.h"
 
-#define W16(p) (*(int16 *)(p))
+#define W16(p) rdI16(p)            /* unaligned-safe 16-bit read */
+#define W16W(p, v) wrI16((p), (v)) /* unaligned-safe 16-bit write */
 
 /* sin/cos via the shared 256-entry table + linear interpolation (16-bit angle:
  * high byte = table index, low byte = fraction). Matches the renderer's
@@ -182,7 +183,7 @@ void FAR CDECL hudRotateLadder(int di) {
         v = cosR * x;
         v = (v << 1) + v;
         ny += (int16)((int16)(v >> 16) >> 1);
-        W16(g_compassTapeBuf + 0xec + di) = nx;
-        W16(g_compassTapeBuf + 0x15c + di) = ny;
+        W16W(g_compassTapeBuf + 0xec + di, nx);
+        W16W(g_compassTapeBuf + 0x15c + di, ny);
     }
 }

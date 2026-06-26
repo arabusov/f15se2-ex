@@ -88,9 +88,7 @@ int FAR CDECL gfx_setFont(uint16 ch, uint16 fontIdx);                           
 void FAR CDECL gfx_blitToCurrent(int16 pagePtr);                                                                                  /* slot 0x30: copy to curPage */
 int FAR CDECL gfx_getAuxBufSize();                                                                                                /* slot 0x31: getAuxBufSize */
 int FAR CDECL gfx_getFreeMem();                                                                                                   /* slot 0x32: DOS free-memory probe */
-void FAR CDECL gfx_fillRow(uint16 rowOffset, uint16 srcBuf, uint16 rowNum);                                                       /* slot 0x33: copy one decoded row into curPage */
-void FAR CDECL gfx_fillRow2(uint16 x, uint16 y);                                                                                  /* slot 0x34: unused stub (=0x33) */
-void FAR CDECL gfx_copyRow(uint16 rowOffset);                                                                                     /* slot 0x35: no-op in MCGA */
+void FAR CDECL gfx_fillRow2(uint16 x, uint16 y);                                                                                  /* slot 0x34: unused stub */
 void FAR CDECL gfx_nop36();                                                                                                       /* slot 0x36: retf */
 void FAR CDECL gfx_nop37();                                                                                                       /* slot 0x37: retf */
 int FAR CDECL gfx_getPageSeg(uint16 page);                                                                                        /* slot 0x38: select page, returns its seg */

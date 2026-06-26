@@ -519,30 +519,6 @@ int FAR CDECL gfx_getPageSeg(uint16 page) {
     return (int)s->curPageSeg;
 }
 
-/* Slot 0x33: DI = rowOffset, BP = srcBuf (caller DS), BX = rowNum.
- * Copy one 320-byte decoded row into the current page (MCGA: direct write). */
-void FAR CDECL gfx_fillRow(uint16 rowOffset, uint16 srcBuf, uint16 rowNum) {
-    GfxState FAR *s = gfx_getState();
-    const uint8 *src = (const uint8 *)srcBuf; /* near ptr, caller's DS */
-    SDL_Surface *surf = gfx_surfaceForSeg(s->curPageSeg);
-    int row, col;
-    (void)rowNum;
-    if (!surf) return;
-    row = (int)(rowOffset / LOGICAL_WIDTH); /* rowOffset is a linear y*320 index */
-    if (row < 0 || row >= surf->h) return;
-    {
-        uint8 *dst = (uint8 *)surf->pixels + (size_t)row * surf->pitch;
-        for (col = 0; col < LOGICAL_WIDTH && col < surf->w; col++)
-            dst[col] = src[col];
-    }
-}
-
-/* Slot 0x35: DI = rowOffset. In MCGA the row is already in the page (fillRow
- * wrote directly), so this is a no-op. */
-void FAR CDECL gfx_copyRow(uint16 rowOffset) {
-    (void)rowOffset;
-}
-
 /* ---- Slot 0x3f: gfx_getModecode ---- */
 int FAR CDECL gfx_getModecode(void) {
     return 3; /* MCGA mode code */
@@ -1224,12 +1200,8 @@ int FAR CDECL gfx_getFreeMem(void) {
      * the old "fontSetup" mislabel. */
     return 0;
 }
-/* gfx_fillRow (0x33) and gfx_copyRow (0x35) are register-called: their slot
- * symbols are asm shims in regshim.asm -> gfx_fillRow_impl / gfx_copyRow_impl
- * above. Slot 0x34 (fillRow2) is IDENTICAL to slot 0x33 in MGRAPHIC (both
- * `rep movsw` the decoded row to ES:DI), so slot 0x34 points at the same
- * gfx_fillRow shim — decodePic (pic_decodepic.inc) uses it to fill the
- * caller's sprite buffer. This unused stub is kept only for legacy linkage. */
+/* Slot 0x34 (fillRow2): row-decode is done natively in picimpl.c now, so this
+ * is an unused stub kept only for legacy linkage. */
 void FAR CDECL gfx_fillRow2(uint16 x, uint16 y) {
     (void)x;
     (void)y;

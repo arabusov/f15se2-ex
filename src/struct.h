@@ -345,20 +345,12 @@ struct NearestTerrain {
 STATIC_ASSERT(sizeof(struct NearestTerrain) == 16 + sizeof(void *));
 
 /* Neighbour-sampling tables used by findNearestTileObject()/projectModelEdges()
- * to scan the 3x3 grid of tiles around a position. The three arrays are laid
- * out contiguously so the sub-tile offset LUT can be indexed about its centre:
- * lut[-1]/lut[-2] read gridY[10]/gridY[9] (= -4096/-8192), the negative half of
- * the symmetric offset table {-0x2000,-0x1000,0,+0x1000,+0x2000}. */
-#pragma pack(1)
+ * to scan the 3x3 grid of tiles around a position. In-memory only, accessed by
+ * field, so neither packing nor a size contract is needed. */
 struct NeighborSampling {
-    int16 gridX[9];  /* per-cell tile-X delta (-1/0/+1) */
-    int16 gridY[11]; /* [0..8] per-cell tile-Y delta; [9]/[10] also serve as
-                        lut[-2]/lut[-1] */
-    int16 lut[3];    /* sub-tile pixel offset per grid delta about the centre:
-                        {0,+0x1000,+0x2000}; lut[-1]=gridY[10], lut[-2]=gridY[9] */
+    int16 gridX[9]; /* per-cell tile-X delta (-1/0/+1) */
+    int16 gridY[9]; /* per-cell tile-Y delta (-1/0/+1) */
 };
-#pragma pack()
-STATIC_ASSERT(sizeof(struct NeighborSampling) == 46);
 
 #pragma pack(1)
 struct TerrainTile {

@@ -72,7 +72,8 @@ int __far fillSpanRect(const int16 *pageDesc, int left, int top, int right, int 
 }
 
 /* helpers: little-endian word view of a byte buffer, and low-byte lvalue. */
-#define W16(p) (*(int16 *)(p))
+#define W16(p) rdI16(p)            /* unaligned-safe 16-bit read */
+#define W16W(p, v) wrI16((p), (v)) /* unaligned-safe 16-bit write */
 #define LOB(v) (*(uint8 *)&(v))
 
 /* gauge layout descriptor word indices (param blocks fed to the gfx slots).
@@ -238,8 +239,8 @@ static void drawInstrumentGauges(void) {
                 g_tapeRenderX -= g_tapeTickPitch;
                 continue;
             }
-            W16(g_speedLabelBuf) = W16(g_tapeDigitStrip + di + 8);
-            W16(g_speedLabelBuf + 2) = W16(g_tapeDigitStrip + di + 0x58);
+            W16W(g_speedLabelBuf, W16(g_tapeDigitStrip + di + 8));
+            W16W(g_speedLabelBuf + 2, W16(g_tapeDigitStrip + di + 0x58));
             drawTapeStr(g_tapeText0, g_speedLabelBuf, 0x01);
             di += 2;
             if (--g_tapePageCounter == 0) break;
@@ -311,7 +312,7 @@ static void drawInstrumentGauges(void) {
             if (di == 0) {
                 drawTapeStr(g_tapeText0, g_tapeDigitStrip + 4, 0x01);
             } else {
-                W16(g_altLabelBuf) = W16(g_tapeDigitStrip + di + 0xa8);
+                W16W(g_altLabelBuf, W16(g_tapeDigitStrip + di + 0xa8));
                 drawTapeStr(g_tapeText0, g_altLabelBuf, 0x01);
             }
             di += 2;
@@ -350,8 +351,8 @@ static void drawInstrumentGauges(void) {
             uint8 *bx;
             g_compassScrollIdx = (g_compassScrollIdx + 8) & 0x3f;
             bx = g_compassTapeBuf + 132 + g_compassScrollIdx;
-            W16(bx + 4) = W16(bx);
-            W16(bx + 6) = W16(bx + 2);
+            W16W(bx + 4, W16(bx));
+            W16W(bx + 6, W16(bx + 2));
             bx += 4;
             g_compassDrawX += g_headingPixPerDeg;
             g_tapeText1[4] = g_compassDrawX;
@@ -424,117 +425,117 @@ static void drawInstrumentGauges(void) {
         for (;;) {
             int d = dl;
             if (d == 9) { /* single short rung */
-                W16(g_compassTapeBuf + 0xec + di) = g_pitchVtxX0;
-                W16(g_compassTapeBuf + 0xee + di) = g_pitchVtxX3;
-                W16(g_compassTapeBuf + 0x15c + di) = bxY;
-                W16(g_compassTapeBuf + 0x15e + di) = bxY;
+                W16W(g_compassTapeBuf + 0xec + di, g_pitchVtxX0);
+                W16W(g_compassTapeBuf + 0xee + di, g_pitchVtxX3);
+                W16W(g_compassTapeBuf + 0x15c + di, bxY);
+                W16W(g_compassTapeBuf + 0x15e + di, bxY);
                 g_compassTapeBuf[0x1cc + si] = 1;
                 g_compassTapeBuf[0x1cd + si] = 0;
-                W16(g_compassTapeBuf + 0x1e8 + si) = di;
+                W16W(g_compassTapeBuf + 0x1e8 + si, di);
                 di += 2;
-                W16(g_compassTapeBuf + 0x1e9 + si) = di;
+                W16W(g_compassTapeBuf + 0x1e9 + si, di);
                 di += 2;
                 si += 2;
                 bxY -= g_pitchRungVStep;
                 ch += 1;
             } else if (d > 9) { /* 3-segment rung, shifted -5 */
-                W16(g_compassTapeBuf + 0xec + di) = g_pitchVtxX0;
-                W16(g_compassTapeBuf + 0xee + di) = g_pitchVtxX0;
-                W16(g_compassTapeBuf + 0xf0 + di) = g_pitchVtxX3;
-                W16(g_compassTapeBuf + 0xf2 + di) = g_pitchVtxX3;
-                W16(g_compassTapeBuf + 0x15e + di) = bxY;
-                W16(g_compassTapeBuf + 0x160 + di) = bxY;
-                W16(g_compassTapeBuf + 0x15c + di) = bxY - 5;
-                W16(g_compassTapeBuf + 0x162 + di) = bxY - 5;
+                W16W(g_compassTapeBuf + 0xec + di, g_pitchVtxX0);
+                W16W(g_compassTapeBuf + 0xee + di, g_pitchVtxX0);
+                W16W(g_compassTapeBuf + 0xf0 + di, g_pitchVtxX3);
+                W16W(g_compassTapeBuf + 0xf2 + di, g_pitchVtxX3);
+                W16W(g_compassTapeBuf + 0x15e + di, bxY);
+                W16W(g_compassTapeBuf + 0x160 + di, bxY);
+                W16W(g_compassTapeBuf + 0x15c + di, bxY - 5);
+                W16W(g_compassTapeBuf + 0x162 + di, bxY - 5);
                 g_compassTapeBuf[0x1cc + si] = 3;
                 g_compassTapeBuf[0x1cd + si] = 0;
                 di += 2;
-                W16(g_compassTapeBuf + 0x1e8 + si) = di;
+                W16W(g_compassTapeBuf + 0x1e8 + si, di);
                 di += 2;
-                W16(g_compassTapeBuf + 0x1e9 + si) = di;
+                W16W(g_compassTapeBuf + 0x1e9 + si, di);
                 di += 4;
                 si += 2;
                 bxY -= g_pitchRungVStep;
                 ch += 3;
             } else if (d == -9 || d == 0) { /* full 4-vertex rung */
-                W16(g_compassTapeBuf + 0xec + di) = g_pitchVtxX0;
-                W16(g_compassTapeBuf + 0xee + di) = g_pitchVtxX1;
-                W16(g_compassTapeBuf + 0xf0 + di) = g_pitchVtxX2;
-                W16(g_compassTapeBuf + 0xf2 + di) = g_pitchVtxX3;
-                W16(g_compassTapeBuf + 0x15c + di) = bxY;
-                W16(g_compassTapeBuf + 0x15e + di) = bxY;
-                W16(g_compassTapeBuf + 0x160 + di) = bxY;
-                W16(g_compassTapeBuf + 0x162 + di) = bxY;
+                W16W(g_compassTapeBuf + 0xec + di, g_pitchVtxX0);
+                W16W(g_compassTapeBuf + 0xee + di, g_pitchVtxX1);
+                W16W(g_compassTapeBuf + 0xf0 + di, g_pitchVtxX2);
+                W16W(g_compassTapeBuf + 0xf2 + di, g_pitchVtxX3);
+                W16W(g_compassTapeBuf + 0x15c + di, bxY);
+                W16W(g_compassTapeBuf + 0x15e + di, bxY);
+                W16W(g_compassTapeBuf + 0x160 + di, bxY);
+                W16W(g_compassTapeBuf + 0x162 + di, bxY);
                 g_compassTapeBuf[0x1cc + si] = 1;
                 g_compassTapeBuf[0x1cd + si] = 1;
-                W16(g_compassTapeBuf + 0x1e8 + si) = di;
+                W16W(g_compassTapeBuf + 0x1e8 + si, di);
                 di += 6;
-                W16(g_compassTapeBuf + 0x1e9 + si) = di;
+                W16W(g_compassTapeBuf + 0x1e9 + si, di);
                 di += 2;
                 si += 2;
                 bxY -= g_pitchRungVStep;
                 ch += 2;
             } else if (d < -9) { /* 4-segment rung, shifted +5 */
-                W16(g_compassTapeBuf + 0xec + di) = g_pitchVtxX0;
-                W16(g_compassTapeBuf + 0xee + di) = g_pitchVtxX0;
-                W16(g_compassTapeBuf + 0xf0 + di) = g_pitchVtxX1;
-                W16(g_compassTapeBuf + 0xf2 + di) = g_pitchVtxX2;
-                W16(g_compassTapeBuf + 0xf4 + di) = g_pitchVtxX3;
-                W16(g_compassTapeBuf + 0xf6 + di) = g_pitchVtxX3;
-                W16(g_compassTapeBuf + 0x15e + di) = bxY;
-                W16(g_compassTapeBuf + 0x160 + di) = bxY;
-                W16(g_compassTapeBuf + 0x162 + di) = bxY;
-                W16(g_compassTapeBuf + 0x164 + di) = bxY;
-                W16(g_compassTapeBuf + 0x15c + di) = bxY + 5;
-                W16(g_compassTapeBuf + 0x166 + di) = bxY + 5;
+                W16W(g_compassTapeBuf + 0xec + di, g_pitchVtxX0);
+                W16W(g_compassTapeBuf + 0xee + di, g_pitchVtxX0);
+                W16W(g_compassTapeBuf + 0xf0 + di, g_pitchVtxX1);
+                W16W(g_compassTapeBuf + 0xf2 + di, g_pitchVtxX2);
+                W16W(g_compassTapeBuf + 0xf4 + di, g_pitchVtxX3);
+                W16W(g_compassTapeBuf + 0xf6 + di, g_pitchVtxX3);
+                W16W(g_compassTapeBuf + 0x15e + di, bxY);
+                W16W(g_compassTapeBuf + 0x160 + di, bxY);
+                W16W(g_compassTapeBuf + 0x162 + di, bxY);
+                W16W(g_compassTapeBuf + 0x164 + di, bxY);
+                W16W(g_compassTapeBuf + 0x15c + di, bxY + 5);
+                W16W(g_compassTapeBuf + 0x166 + di, bxY + 5);
                 g_compassTapeBuf[0x1cc + si] = 2;
                 g_compassTapeBuf[0x1cd + si] = 2;
                 di += 2;
-                W16(g_compassTapeBuf + 0x1e8 + si) = di;
+                W16W(g_compassTapeBuf + 0x1e8 + si, di);
                 di += 6;
-                W16(g_compassTapeBuf + 0x1e9 + si) = di;
+                W16W(g_compassTapeBuf + 0x1e9 + si, di);
                 di += 4;
                 si += 2;
                 bxY -= g_pitchRungVStep;
                 ch += 4;
             } else if (d > 0) { /* 1..8: 3-segment rung, +5 */
-                W16(g_compassTapeBuf + 0xec + di) = g_pitchVtxX0;
-                W16(g_compassTapeBuf + 0xee + di) = g_pitchVtxX0;
-                W16(g_compassTapeBuf + 0xf0 + di) = g_pitchVtxX3;
-                W16(g_compassTapeBuf + 0xf2 + di) = g_pitchVtxX3;
-                W16(g_compassTapeBuf + 0x15e + di) = bxY;
-                W16(g_compassTapeBuf + 0x160 + di) = bxY;
-                W16(g_compassTapeBuf + 0x15c + di) = bxY + 5;
-                W16(g_compassTapeBuf + 0x162 + di) = bxY + 5;
+                W16W(g_compassTapeBuf + 0xec + di, g_pitchVtxX0);
+                W16W(g_compassTapeBuf + 0xee + di, g_pitchVtxX0);
+                W16W(g_compassTapeBuf + 0xf0 + di, g_pitchVtxX3);
+                W16W(g_compassTapeBuf + 0xf2 + di, g_pitchVtxX3);
+                W16W(g_compassTapeBuf + 0x15e + di, bxY);
+                W16W(g_compassTapeBuf + 0x160 + di, bxY);
+                W16W(g_compassTapeBuf + 0x15c + di, bxY + 5);
+                W16W(g_compassTapeBuf + 0x162 + di, bxY + 5);
                 g_compassTapeBuf[0x1cc + si] = 3;
                 g_compassTapeBuf[0x1cd + si] = 0;
                 di += 2;
-                W16(g_compassTapeBuf + 0x1e8 + si) = di;
+                W16W(g_compassTapeBuf + 0x1e8 + si, di);
                 di += 2;
-                W16(g_compassTapeBuf + 0x1e9 + si) = di;
+                W16W(g_compassTapeBuf + 0x1e9 + si, di);
                 di += 4;
                 si += 2;
                 bxY -= g_pitchRungVStep;
                 ch += 3;
             } else { /* -8..-1: 4-segment rung, -5 */
-                W16(g_compassTapeBuf + 0xec + di) = g_pitchVtxX0;
-                W16(g_compassTapeBuf + 0xee + di) = g_pitchVtxX0;
-                W16(g_compassTapeBuf + 0xf0 + di) = g_pitchVtxX1;
-                W16(g_compassTapeBuf + 0xf2 + di) = g_pitchVtxX2;
-                W16(g_compassTapeBuf + 0xf4 + di) = g_pitchVtxX3;
-                W16(g_compassTapeBuf + 0xf6 + di) = g_pitchVtxX3;
-                W16(g_compassTapeBuf + 0x15e + di) = bxY;
-                W16(g_compassTapeBuf + 0x160 + di) = bxY;
-                W16(g_compassTapeBuf + 0x162 + di) = bxY;
-                W16(g_compassTapeBuf + 0x164 + di) = bxY;
-                W16(g_compassTapeBuf + 0x15c + di) = bxY - 5;
-                W16(g_compassTapeBuf + 0x166 + di) = bxY - 5;
+                W16W(g_compassTapeBuf + 0xec + di, g_pitchVtxX0);
+                W16W(g_compassTapeBuf + 0xee + di, g_pitchVtxX0);
+                W16W(g_compassTapeBuf + 0xf0 + di, g_pitchVtxX1);
+                W16W(g_compassTapeBuf + 0xf2 + di, g_pitchVtxX2);
+                W16W(g_compassTapeBuf + 0xf4 + di, g_pitchVtxX3);
+                W16W(g_compassTapeBuf + 0xf6 + di, g_pitchVtxX3);
+                W16W(g_compassTapeBuf + 0x15e + di, bxY);
+                W16W(g_compassTapeBuf + 0x160 + di, bxY);
+                W16W(g_compassTapeBuf + 0x162 + di, bxY);
+                W16W(g_compassTapeBuf + 0x164 + di, bxY);
+                W16W(g_compassTapeBuf + 0x15c + di, bxY - 5);
+                W16W(g_compassTapeBuf + 0x166 + di, bxY - 5);
                 g_compassTapeBuf[0x1cc + si] = 2;
                 g_compassTapeBuf[0x1cd + si] = 2;
                 di += 2;
-                W16(g_compassTapeBuf + 0x1e8 + si) = di;
+                W16W(g_compassTapeBuf + 0x1e8 + si, di);
                 di += 6;
-                W16(g_compassTapeBuf + 0x1e9 + si) = di;
+                W16W(g_compassTapeBuf + 0x1e9 + si, di);
                 di += 4;
                 si += 2;
                 bxY -= g_pitchRungVStep;
@@ -604,8 +605,8 @@ static void drawInstrumentGauges(void) {
                     /* first (B) label */
                     idx4 = g_tapeCursorX * 4;
                     if (idx4 >= 0 && idx4 + 3 < (int)sizeof(g_pitchLabelTable)) {
-                        W16(g_tapeDrawStr) = W16(g_pitchLabelTable + idx4);
-                        W16(g_tapeDrawStr + 2) = W16(g_pitchLabelTable + idx4 + 2);
+                        W16W(g_tapeDrawStr, W16(g_pitchLabelTable + idx4));
+                        W16W(g_tapeDrawStr + 2, W16(g_pitchLabelTable + idx4 + 2));
                     } else {
                         g_tapeDrawStr[0] = 0;
                     }
@@ -621,8 +622,8 @@ static void drawInstrumentGauges(void) {
                     /* second (A) label */
                     idx4 = g_tapeCursorX * 4;
                     if (idx4 >= 0 && idx4 + 3 < (int)sizeof(g_pitchLabelTable)) {
-                        W16(g_tapeDrawStr) = W16(g_pitchLabelTable + idx4);
-                        W16(g_tapeDrawStr + 2) = W16(g_pitchLabelTable + idx4 + 2);
+                        W16W(g_tapeDrawStr, W16(g_pitchLabelTable + idx4));
+                        W16W(g_tapeDrawStr + 2, W16(g_pitchLabelTable + idx4 + 2));
                     } else {
                         g_tapeDrawStr[0] = 0;
                     }

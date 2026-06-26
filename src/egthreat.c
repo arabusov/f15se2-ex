@@ -115,7 +115,7 @@ void fireGroundThreat(int planeIdx) {
             *(uint8 *)&g_planeTable.planes[planeIdx].flags |= 4;
         }
     }
-    if (score > range[0]) {
+    if ((unsigned)score > range[0]) {
         g_planeTable.planes[planeIdx].alertLevel += (g_difficultyTier + g_missionStatus) * 32 + 32;
         if (g_planeTable.planes[planeIdx].alertLevel > 255) {
             g_planeTable.planes[planeIdx].alertLevel = 255;
@@ -133,7 +133,7 @@ void fireGroundThreat(int planeIdx) {
                             if (g_planeTable.planes[planeIdx].alertLevel >= 250) {
                                 slot = (g_missionStatus != 0) ? planeIdx % g_missionStatus : 0;
                                 if (g_projectiles[slot].ttl == 0) {
-                                    if (sams[threatType].lockRange > (unsigned)range[0]) {
+                                    if ((unsigned)sams[threatType].lockRange > (unsigned)range[0]) {
                                         threatType = threatType;
                                         g_projectiles[slot].mapX = g_planeTable.planes[planeIdx].mapX + 8;
                                         slot = slot;

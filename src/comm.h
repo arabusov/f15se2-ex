@@ -8,7 +8,8 @@
 /* Size of the world-export scratch area that START fills and END reads back */
 #define COMM_WORLDBUF_SIZE 0x1194
 
-#pragma pack(1)
+/* In-memory only (never serialized; the three former DOS EXEs are one process
+ * now) and accessed solely by named field, so no packing / size contract. */
 struct GameComm {
     char gfxOvlName[FILENAME_LENGTH];
     char sndOvlName[FILENAME_LENGTH];
@@ -25,6 +26,8 @@ struct GameComm {
     int16 trainingFlag; /* nonzero if the last mission was a training mission */
     int16 setupDetail;
     uint8 pad0[4];
+    int16 bombDamage; /* egame writes mission bomb-damage result here for the debrief */
+    int16 gunHits;    /* egame writes mission gun-hit count here for the debrief */
     uint16 weaponType[4]; /* weapon type indices into weaponLoadouts[] (0=Sidewinder,1=AMRAAM,etc) */
     int16 weaponCount[4]; /* weapon quantities per slot */
     uint8 joyData[20];
@@ -37,7 +40,6 @@ struct GameComm {
     /* world-export scratch: exportWorldToComm() fills this, END reads it back */
     uint8 worldBuf[COMM_WORLDBUF_SIZE];
 };
-#pragma pack()
 
 /* The shared communication record. */
 extern struct GameComm *commData;

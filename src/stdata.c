@@ -286,8 +286,8 @@ int16 theaterSaved = 0;
 
 /* Pointer arrays for region/world files */
 char *regnPlhPtr = aRegn_xxx;
-extern const char *plhFiles[] = {"lb.xxx", "pg.xxx", "vn.xxx", "me.xxx", "nc.xxx", "ce.xxx", "jp.xxx", "na.xxx"};
-extern const char *worldFiles[] = {"Libya.wld", "gulf.wld", "vn.wld", "me.wld", "nc.wld", "ce.wld", "jp.wld", "na.wld"};
+const char *plhFiles[] = {"lb.xxx", "pg.xxx", "vn.xxx", "me.xxx", "nc.xxx", "ce.xxx", "jp.xxx", "na.xxx"};
+const char *worldFiles[] = {"Libya.wld", "gulf.wld", "vn.wld", "me.wld", "nc.wld", "ce.wld", "jp.wld", "na.wld"};
 
 /* Mission coordinate state */
 int16 missionMidX = 0;
@@ -300,27 +300,27 @@ int16 missionBase2X = 0;
 int16 missionBase2Y = 0;
 
 /* Mission menu pointer arrays */
-extern const char *missTheaNames[] = {"Libya", "Persian Gulf", "Vietnam", "Middle East", "Other Areas"};
-extern const char *missTheaDesc[] = {"Across the \"Line of Death\"", "Keeping the Sea Lanes Open", "America's Longest Air War", "Eagles vs MiGs", "Insert your scenario disk"};
-extern const char *missDiffLevels[] = {"Rookie", "Pilot", "Veteran", "Ace", "Demo"};
-extern const char *missDiffDesc[] = {"Get off to a good start", "For the casual player", "For more serious players", "The Ultimate Challenge", "Let's see what this thing can do"};
-extern const char *scenarioCodePtr[] = {"nc", "ce", "jp", "na"};
-extern const char *missScenarioNames[] = {"North Cape", "Central Europe", "Desert Storm", "North Atlantic", "Other Areas"};
-extern const char *missScenarioDesc[] = {"Into the Soviet's Backyard", "Red Storm Raging", "The Fight for Kuwait", "Defending the Iceland-UK Gap", "Select a built-in area"};
-extern const char *missTypeNames[] = {"Historical Missions", "General Air Strikes", &emptyMissTypeNames[0], &emptyMissTypeNames[1], &emptyMissTypeNames[2]};
-extern const char *missTypeDesc[] = {"Reenact history", "The core of the Air Campaign", &emptyMissTypeDescs[0], &emptyMissTypeDescs[1], &emptyMissTypeDescs[2]};
-extern const char *missHistorical1Names[] = {"Saddam's Eyes", "Command and Control", "Scud Busting", "No Nukes", "more historical missions"};
-extern const char *missHistorical1Desc[] = {"Iraq's Early Warning Radar", "Iraqi Defense Nerve Center", "Stop Saddam's Terror Weapon", "Nuclear Research Facility", &emptyHistDesc1};
-extern const char *missHistorical2Names[] = {"'Baby Milk Factory'", "Stop the Spill", "Bridges to Nowhere", "Republican Guards", "more historical missions"};
-extern const char *missHistorical2Desc[] = {"Chemical/Biological Weapons Plant", "Sever the Oil Pumping Manifold", "Saddam's Elite Armored Units", "Cut the Supply Lines", &emptyHistDesc2};
-extern const char *missionStr = "MISSION";
+const char *missTheaNames[] = {"Libya", "Persian Gulf", "Vietnam", "Middle East", "Other Areas"};
+const char *missTheaDesc[] = {"Across the \"Line of Death\"", "Keeping the Sea Lanes Open", "America's Longest Air War", "Eagles vs MiGs", "Insert your scenario disk"};
+const char *missDiffLevels[] = {"Rookie", "Pilot", "Veteran", "Ace", "Demo"};
+const char *missDiffDesc[] = {"Get off to a good start", "For the casual player", "For more serious players", "The Ultimate Challenge", "Let's see what this thing can do"};
+const char *scenarioCodePtr[] = {"nc", "ce", "jp", "na"};
+const char *missScenarioNames[] = {"North Cape", "Central Europe", "Desert Storm", "North Atlantic", "Other Areas"};
+const char *missScenarioDesc[] = {"Into the Soviet's Backyard", "Red Storm Raging", "The Fight for Kuwait", "Defending the Iceland-UK Gap", "Select a built-in area"};
+const char *missTypeNames[] = {"Historical Missions", "General Air Strikes", &emptyMissTypeNames[0], &emptyMissTypeNames[1], &emptyMissTypeNames[2]};
+const char *missTypeDesc[] = {"Reenact history", "The core of the Air Campaign", &emptyMissTypeDescs[0], &emptyMissTypeDescs[1], &emptyMissTypeDescs[2]};
+const char *missHistorical1Names[] = {"Saddam's Eyes", "Command and Control", "Scud Busting", "No Nukes", "more historical missions"};
+const char *missHistorical1Desc[] = {"Iraq's Early Warning Radar", "Iraqi Defense Nerve Center", "Stop Saddam's Terror Weapon", "Nuclear Research Facility", &emptyHistDesc1};
+const char *missHistorical2Names[] = {"'Baby Milk Factory'", "Stop the Spill", "Bridges to Nowhere", "Republican Guards", "more historical missions"};
+const char *missHistorical2Desc[] = {"Chemical/Biological Weapons Plant", "Sever the Oil Pumping Manifold", "Saddam's Elite Armored Units", "Cut the Supply Lines", &emptyHistDesc2};
+const char *missionStr = "MISSION";
 char *plh3d3Ptr = placeholder_3d3;
 
 /* Pilot state */
 uint8 pilotSelectFlag = 0;
 
 /* Rank pointer array */
-extern const char *ranks[] = {"2nd Lt. ", "1st Lt. ", "Capt. ", "Major ", "Lt Col. ", "Colonel ", "Gen. "};
+const char *ranks[] = {"2nd Lt. ", "1st Lt. ", "Capt. ", "Major ", "Lt Col. ", "Colonel ", "Gen. "};
 
 /* Medal sprite tables (7 entries for 7 medals, null-terminated) */
 extern const uint8 medalSpriteX[] = {130, 113, 129, 112, 111, 161, 159, 0};
@@ -523,10 +523,10 @@ extern const int16 targetCoordsY2Alt[4] = {16960, 17088, 14912, 15040};
 extern const uint8 missionPickType[8] = {2, 6, 5, 6, 6, 6, 6, 11};
 
 /* Pointer arrays: target coordinates per mission pick index */
-extern const int16 *targetCoordsXPtrs[8] = {
+const int16 *targetCoordsXPtrs[8] = {
     targetCoordsX0, targetCoordsX1, targetCoordsX2, targetCoordsX3,
     targetCoordsX4, &targetCoordsX5, targetCoordsX6, targetCoordsX7};
-extern const int16 *targetCoordsYPtrs[8] = {
+const int16 *targetCoordsYPtrs[8] = {
     targetCoordsY0, targetCoordsY1, targetCoordsY2, targetCoordsY3,
     targetCoordsY4, &targetCoordsY5, targetCoordsY6, targetCoordsY7};
 extern const int16 targetCoordsCount[9] = {3, 2, 2, 3, 4, 1, 8, 3, 0};
