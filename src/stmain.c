@@ -46,7 +46,6 @@ int start_main(void) {
     audio_setup(0, 0);
 #ifndef DEBUG_AUTOSTART
     if (*needSplash == 1) {
-        /* 0xc1 doSplash:  */
         gameData->campaignProgress = 1;
         gameData->difficulty = 0xffff;
         gameData->theater = 0xffff;

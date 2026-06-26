@@ -1425,7 +1425,7 @@ int far clipAndRasterizeEdge(void) {
             int t = ax;
             ax = bx;
             bx = t;
-        }                                /* ax=boundaryY, bx=x   */
+        } /* ax=boundaryY, bx=x   */
         if (bx < 0 || bx > g_clipMaxX) { /* still off a vertical side: sliver     */
             boundaryColumnFill(bx, di, bp);
             return 0;
