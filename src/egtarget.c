@@ -47,6 +47,7 @@ void updateTargetLock(void) {
     int p0, a0, b0, c0, d0, e0, deadInit, lockedRange, h0;
     int dk;
     int lodM, planeModelDepth, planeFineDepth;
+    int airSelect;
 
     deadInit = 0;
 
@@ -159,14 +160,29 @@ skip_aam:
     planeModelDepth = -0x20 * lodM; /* dot -> model gate: -0x20 (normal) / -0x100 (detail 4) */
     planeFineDepth = -0x10 * lodM;  /* coarse -> fine model: -0x10 (normal) / -0x80 (detail 4) */
 
-    /* A2G radar lock range */
-    if ((g_airTargetLock & 0x80) && g_airTargetLock != -1) {
-        idx = g_airTargetLock - 0x80;
-        lockedRange = computeTargetBearing(g_simObjects[idx].posX, g_simObjects[idx].posY, 1);
-        if (abs((int16)(g_ourHead + g_viewHeadingOffset - g_targetBearing)) > 0x2000) {
+    /* Air-target select. The 0x80 bit means "(re)acquire": either no current
+       lock (-1) or the T key just requested the next target. With an A2A missile
+       selected the lock is then sticky (T cycles, like the ground-target lock);
+       other weapons keep auto-acquiring the nearest contact every frame. */
+    if (g_airTargetLock & 0x80) {
+        airSelect = 1;
+        if (g_airTargetLock != -1) {
+            idx = g_airTargetLock - 0x80;
+            lockedRange = computeTargetBearing(g_simObjects[idx].posX, g_simObjects[idx].posY, 1);
+            if (abs((int16)(g_ourHead + g_viewHeadingOffset - g_targetBearing)) > 0x2000) {
+                lockedRange = 0;
+            }
+        } else {
             lockedRange = 0;
         }
+    } else if (g_currentWeaponType == 1 &&
+               (g_simObjects[g_airTargetLock].flags.b[0] & 0x22) == 2) {
+        /* A2A missile selected and the designated target is still a live
+           contact: hold the lock (T cycles to the next one). */
+        airSelect = 0;
+        lockedRange = 0;
     } else {
+        airSelect = 1;
         lockedRange = 0;
     }
 
@@ -178,7 +194,7 @@ skip_aam:
         if (computeSimObjectRange(idx) >= 4800 && g_directorMode == 0)
             goto next2;
 
-        if (range > g_targetRange && lockedRange < g_targetRange && !(keyValue & 0x80) &&
+        if (airSelect && range > g_targetRange && lockedRange < g_targetRange && !(keyValue & 0x80) &&
             !(g_simObjects[idx].flags.b[0] & 0x20) &&
             g_simObjects[idx].speed != 0) {
             computeTargetBearing(g_simObjects[idx].posX, g_simObjects[idx].posY, 1);

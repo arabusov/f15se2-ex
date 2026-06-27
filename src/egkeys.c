@@ -199,7 +199,12 @@ void keyDispatch(uint16 scanCode) {
         }
         break;
     case 0x1474:
-        *(char *)&g_groundTargetLock |= 0x80;
+        /* T designates the next target: air targets when an A2A missile is
+           selected, ground/map targets otherwise. */
+        if (g_currentWeaponType == 1)
+            *(char *)&g_airTargetLock |= 0x80;
+        else
+            *(char *)&g_groundTargetLock |= 0x80;
         break;
     case 0xe08:
         g_axisInputAccum[0] = 1;

@@ -32,14 +32,13 @@ The entire game is playable, software rendering is ported to SDL, sound works us
 2. Make the missiles more difficult to evade, as it's currently trivial (just beam them, i.e. put them on approx 90deg angle to the plane). Implement quasi-realistic self propelled/ballistic stages, have missile run out of energy and maneuverability when propellant has been burned off.
 3. Make the gun more predictable, right now it's spraying all over the place. Show nice tracers, make them affected by gravity etc.
 4. Implement missile trails for better situational awareness.
-5. Make air targets also selectable with the `T` key, like ground targets.
-6. In-game menu for configuration (keyboard/joystick binds, turn engine sounds on and off, ...)
-7. Better damage model for player aircraft, currently being hit by a missile results in just in a small drop of maximum RPM. Simulate full/partial loss of stability, broken systems, weapons, hydraulics etc., up to instant destruction.
-8. Better clouds and smoke effects, right now these are solid polygons in mid air.
-9. More varied terrain and water, these are completely flat with an occasional pyramids that are supposed to represent mountains. It can continue to be flat shaded/polygon based to not change the look of the game too much, but we definitely need more vertices.
-10. Scenario/model editor.
-11. Multiplayer.
-12. VR support. 😈
+5. In-game menu for configuration (keyboard/joystick binds, turn engine sounds on and off, ...)
+6. Better damage model for player aircraft, currently being hit by a missile results in just in a small drop of maximum RPM. Simulate full/partial loss of stability, broken systems, weapons, hydraulics etc., up to instant destruction.
+7. Better clouds and smoke effects, right now these are solid polygons in mid air.
+8. More varied terrain and water, these are completely flat with an occasional pyramids that are supposed to represent mountains. It can continue to be flat shaded/polygon based to not change the look of the game too much, but we definitely need more vertices.
+9. Scenario/model editor.
+10. Multiplayer.
+11. VR support. 😈
 
 ## Known bugs
 
