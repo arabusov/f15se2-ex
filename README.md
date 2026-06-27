@@ -25,9 +25,8 @@ The entire game is playable, software rendering is ported to SDL, sound works us
 1. Moving rendering out of the bespoke software engine and into a modern 3D API such as OpenGL or Vulkan, enabling higher resolutions along the way since the game is currently capped at `320x200`, preferably keeping the ability to switch between the two in real time. At a later time, perhaps it will also be possible to upgrade the original software rendering to custom resolutions.
 2. Switching the internal physics calculations from fixed-point numbers to native hardware float for better precision and reduced jitterness.
 3. Port the game back to 32bit DOS.
-4. VR support. :)
 
-### Game features
+### Functional
 
 1. Implement a full 3D cockpit with 3DOF/6DOF head movement with the hat switch and/or TrackIR.
 2. Make the missiles more difficult to evade, as it's currently trivial (just beam them, i.e. put them on approx 90deg angle to the plane). Implement quasi-realistic self propelled/ballistic stages, have missile run out of energy and maneuverability when propellant has been burned off.
@@ -35,6 +34,12 @@ The entire game is playable, software rendering is ported to SDL, sound works us
 4. Implement missile trails for better situational awareness.
 5. Make air targets also selectable with the `T` key, like ground targets.
 6. In-game menu for configuration (keyboard/joystick binds, turn engine sounds on and off, ...)
+7. Better damage model for player aircraft, currently being hit by a missile results in just in a small drop of maximum RPM. Simulate full/partial loss of stability, broken systems, weapons, hydraulics etc., up to instant destruction.
+8. Better clouds and smoke effects, right now these are solid polygons in mid air.
+9. More varied terrain and water, these are completely flat with an occasional pyramids that are supposed to represent mountains. It can continue to be flat shaded/polygon based to not change the look of the game too much, but we definitely need more vertices.
+10. Scenario/model editor.
+11. Multiplayer.
+12. VR support. 😈
 
 ## Known bugs
 
