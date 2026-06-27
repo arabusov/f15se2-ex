@@ -195,14 +195,23 @@ static void buildProjection(int Wv, int Hv, int cx, int cy, float fGate) {
  * gets palNear, the far edge (pts 2/3 = the next ring's fore+rear) gets palFar.
  * GL_SMOOTH then interpolates between the two adjacent ramp colours so the
  * horizon reads as a continuous gradient instead of solid stepped bands. */
-static void sphereQuadGrad(const int *pts, int palNear, int palFar) {
+static void sphereQuadGrad(const float *pts, int palNear, int palFar) {
     glBegin(GL_QUADS);
-    glColorIndex(palNear); glVertex2f((float)pts[0], (float)pts[1]);
-    glColorIndex(palNear); glVertex2f((float)pts[2], (float)pts[3]);
-    glColorIndex(palFar);  glVertex2f((float)pts[4], (float)pts[5]);
-    glColorIndex(palFar);  glVertex2f((float)pts[6], (float)pts[7]);
+    glColorIndex(palNear); glVertex2f(pts[0], pts[1]);
+    glColorIndex(palNear); glVertex2f(pts[2], pts[3]);
+    glColorIndex(palFar);  glVertex2f(pts[4], pts[5]);
+    glColorIndex(palFar);  glVertex2f(pts[6], pts[7]);
     glEnd();
 }
+
+/* Float counterpart of fixedMulQ14 (round((a*b)>>15)): the sphere edge vertices
+ * are computed in float and never snapped to the 320-space integer grid, so the
+ * horizon stays sub-pixel-stable when this viewport is upscaled to the window.
+ * (The software rasterizer must round to whole pixels; GL interpolates, so it
+ * doesn't — leaving the horizon to jitter in ~scale-pixel steps as you manoeuvre.
+ * Only the background sphere diverges to float; the 3D objects keep the integer
+ * transform that the depth sort depends on.) */
+static float fmulQ15(float a, float b) { return a * b * (1.0f / 32768.0f); }
 
 /* GL horizon/sky background — a port of drawProjectionSphere (egsphere.c). The
  * software path stacks screen-space ring quads whose between-ring edges step
@@ -211,8 +220,9 @@ static void sphereQuadGrad(const int *pts, int palNear, int palFar) {
  * so the 3D objects always composite in front (matching the original's draw-first,
  * no-Z background). Runs only at detail >= 3; below that a flat clear stands in. */
 static void glDrawSphere(int Wv, int Hv) {
-    int rearX[17], rearY[17], foreX[17], foreY[17], facePts[8];
-    int ringIx, ringRad, radiusScale, i, j;
+    float rearX[17], rearY[17], foreX[17], foreY[17], facePts[8];
+    int ringIx;
+    float ringRad, radiusScale, i, j;
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -226,21 +236,24 @@ static void glDrawSphere(int Wv, int Hv) {
     for (ringIx = 0; ringIx < 16; ringIx++)
         g_sphereRingRadii[ringIx] = g_sphereRingTable[ringIx];
     g_sphereTiltZ = -g_spherePitch;
-    radiusScale = (int)(((long)g_sphereRadius << 8) /
-                        (long)(g_sphereDistZ < 0x200 ? 0x200 : g_sphereDistZ));
-    if (g_extraScaleShift != 0) radiusScale <<= g_extraScaleShift;
-    if (g_halfScaleRender != 0) radiusScale >>= 1;
+    /* Kept in float (the software path truncates to int): radiusScale ~= 0 when
+     * the horizon sits at screen centre, so its integer step there is the whole
+     * horizon displacement — a one-pixel pop as the view crosses the horizon. */
+    radiusScale = ((float)g_sphereRadius * 256.0f) /
+                  (float)(g_sphereDistZ < 0x200 ? 0x200 : g_sphereDistZ);
+    if (g_extraScaleShift != 0) radiusScale *= (float)(1 << g_extraScaleShift);
+    if (g_halfScaleRender != 0) radiusScale *= 0.5f;
 
     for (ringIx = 0; ringIx < 17; ringIx++) {
-        ringRad = (ringIx < 16) ? g_sphereRingRadii[ringIx] + radiusScale : 0x5848;
-        i = fixedMulQ14(-0x5848, g_sphereRoll);
-        j = fixedMulQ14(ringRad, g_sphereTiltZ);
+        ringRad = (ringIx < 16) ? (float)g_sphereRingRadii[ringIx] + radiusScale : (float)0x5848;
+        i = fmulQ15(-0x5848, g_sphereRoll);
+        j = fmulQ15(ringRad, g_sphereTiltZ);
         rearX[ringIx] = (g_viewCenterX + i) - j;
         foreX[ringIx] = -i + g_viewCenterX - j;
-        i = fixedMulQ14(ringRad, g_sphereRoll);
-        j = fixedMulQ14(-0x5848, g_sphereTiltZ);
-        rearY[ringIx] = -(-(((i + j) >> 2) - i) + j) + g_viewCenterY;
-        foreY[ringIx] = (((i - j) >> 2) + g_viewCenterY) - i + j;
+        i = fmulQ15(ringRad, g_sphereRoll);
+        j = fmulQ15(-0x5848, g_sphereTiltZ);
+        rearY[ringIx] = -(-(((i + j) * 0.25f) - i) + j) + g_viewCenterY;
+        foreY[ringIx] = (((i - j) * 0.25f) + g_viewCenterY) - i + j;
     }
     for (ringIx = 0; ringIx < 16; ringIx++) {
         facePts[0] = rearX[ringIx];     facePts[1] = rearY[ringIx];
@@ -256,15 +269,15 @@ static void glDrawSphere(int Wv, int Hv) {
         g_sphereRingRadii[ringIx] = g_viewPosZ / ((16 - ringIx) * 0x20) - g_sphereRingRadii[0];
     g_sphereRingRadii[0] = 0;
     for (ringIx = 0; ringIx < 17; ringIx++) {
-        ringRad = (ringIx < 16) ? radiusScale - g_sphereRingRadii[ringIx] : -0x5848;
-        i = fixedMulQ14(-0x5848, g_sphereRoll);
-        j = fixedMulQ14(ringRad, g_sphereTiltZ);
+        ringRad = (ringIx < 16) ? radiusScale - (float)g_sphereRingRadii[ringIx] : (float)-0x5848;
+        i = fmulQ15(-0x5848, g_sphereRoll);
+        j = fmulQ15(ringRad, g_sphereTiltZ);
         rearX[ringIx] = (g_viewCenterX + i) - j;
         foreX[ringIx] = -i + g_viewCenterX - j;
-        i = fixedMulQ14(ringRad, g_sphereRoll);
-        j = fixedMulQ14(-0x5848, g_sphereTiltZ);
-        rearY[ringIx] = -(-(((i + j) >> 2) - i) + j) + g_viewCenterY;
-        foreY[ringIx] = (((i - j) >> 2) + g_viewCenterY) - i + j;
+        i = fmulQ15(ringRad, g_sphereRoll);
+        j = fmulQ15(-0x5848, g_sphereTiltZ);
+        rearY[ringIx] = -(-(((i + j) * 0.25f) - i) + j) + g_viewCenterY;
+        foreY[ringIx] = (((i - j) * 0.25f) + g_viewCenterY) - i + j;
     }
     for (ringIx = 0; ringIx < 16; ringIx++) {
         facePts[0] = rearX[ringIx];     facePts[1] = rearY[ringIx];
