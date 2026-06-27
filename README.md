@@ -12,6 +12,8 @@ The repository was forked off from tag `v0.9.2`, and the idea is that the recons
 
 The project is based on the [SDL3 library](https://github.com/libsdl-org/SDL/releases) for the graphical frontend.
 
+Development journal: https://neuviemeporte.github.io/category/f15-se2
+
 ## Status (27.06.2026)
 
 The entire game is playable, rendering and input handling is ported to SDL, sound works using Adlib emulation through [Nuked-OPL3](https://github.com/nukeykt/Nuked-OPL3), joystick input is supported (not configurable right now).
