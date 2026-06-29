@@ -92,6 +92,57 @@ void r2d_blit(struct SDL_Surface *src, int srcX, int srcY,
               struct SDL_Surface *dst, int dstX, int dstY,
               int w, int h, int key);
 
+/*
+ * Native 2D vector layer (docs/render-2d-overlay.md, Step 4).
+ *
+ * The HUD/MFD vector primitives (lines, pitch-ladder, symbology) are *submitted*
+ * to the renderer rather than rasterized into the 320x200 page. The software
+ * backend realizes a submission by rasterizing into the page (the low-end/DOS
+ * path, pixel-identical to before, via the registered callbacks below). The GL
+ * backend records the submission in 320-space and replays it at the **native
+ * window resolution** over the composited frame, with a line width relative to
+ * the native resolution — a crisp vector HUD instead of an upscaled low-res
+ * image. Same call sites, the realization is the backend's.
+ */
+typedef struct {
+    short x1, y1, x2, y2; /* absolute 320-space, already clipped to the page */
+    unsigned char color;  /* VGA palette index */
+    unsigned char kind;   /* R2D_PRIM_LINE / R2D_PRIM_POINT */
+} R2DVectorPrim;
+#define R2D_PRIM_LINE  0
+#define R2D_PRIM_POINT 1
+
+/* Marks the start of a GL flight frame's 2D overlay (called from the 3D backend
+ * once the main 3D view begins). Only between this and the present do 2D
+ * submissions record for native replay; pure-2D screens (no 3D pass) rasterize
+ * into the page as before. */
+void r2d_vectorBeginFrame(void);
+
+/* Whether 2D primitive submissions should be recorded for native replay (a GL
+ * flight frame, unless disabled via F15_VECTOR2D=0) rather than rasterized into
+ * the page. The gfx submission points branch on this. */
+int r2d_vectorActive(void);
+
+/* Submit a clipped 2D line / point in absolute 320-space with a palette colour
+ * index. Records for native replay when r2d_vectorActive(), else hands off to
+ * the registered software rasterizer. */
+void r2d_submitLine(int x1, int y1, int x2, int y2, int color);
+void r2d_submitPoint(int x, int y, int color);
+
+/* The software backend (gfx_impl.c) registers how it rasterizes a submitted
+ * line/point into the page, so r2d need not own page state. */
+void r2d_registerSoftwarePrims(void (*line)(int x1, int y1, int x2, int y2, int color),
+                               void (*point)(int x, int y, int color));
+
+/* The recorded vector primitives for the current frame, for the GL backend to
+ * replay. Count via *count. */
+const R2DVectorPrim *r2d_vectorPrims(int *count);
+
+/* Called by the backend after replaying the layer at present: clears it so each
+ * frame composes a fresh layer (a frame that submits no lines — e.g. after a
+ * view change — then correctly shows none, with no stale carry-over). */
+void r2d_vectorMarkPresented(void);
+
 /* Present the virtual overlay page (its w/h are the virtual size) to the window
  * through the active backend. shakeOffset is the explosion screen-shake in
  * virtual pixels (0-3), applied as a horizontal present offset (Step 6 moves it

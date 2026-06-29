@@ -37,6 +37,8 @@ static bool s_useGL = false; /* OpenGL backend owns the context + present */
 static GfxState FAR *gfx_getState(void);
 static SDL_Palette *gfxPalette; /* shared 256-entry VGA DAC palette */
 static void gfx_presentSurfaceSW(SDL_Surface *surf, int shake);
+static void gfx_swLine(int x1, int y1, int x2, int y2, int color);
+static void gfx_swPoint(int x, int y, int color);
 
 /* Bring up the SDL window and renderer. The 320x200 logical surface is stretched
  * to fill the resizable window (SDL_LOGICAL_PRESENTATION_STRETCH). */
@@ -52,6 +54,7 @@ void gfx_videoInit(void) {
      * register it with the r2d seam so r2d_present can dispatch to it when GL is
      * not active. */
     r2d_registerSoftwarePresent(gfx_presentSurfaceSW);
+    r2d_registerSoftwarePrims(gfx_swLine, gfx_swPoint);
 
     s_useGL = r3dgl_wantGL();
     if (s_useGL) r3dgl_setGLAttributes();
@@ -1001,16 +1004,54 @@ static int gfx_lineOutcode(int x, int y) {
     return code;
 }
 
+/* Software 2D-primitive rasterizers — the software backend's realization of a
+ * submitted line/point (registered with r2d via r2d_registerSoftwarePrims).
+ * Endpoints/coords arrive already blitOffset-absolute and clipped to the page;
+ * these just write the current page surface. The GL backend instead records the
+ * submission and replays it at native resolution (docs Step 4). */
+static void gfx_swLine(int x1, int y1, int x2, int y2, int colorArg) {
+    SDL_Surface *surf = gfx_getCurPageSurface();
+    uint8 *base;
+    int pitch, dx, dy, sx, sy, err, e2;
+    uint8 color = (uint8)colorArg;
+    if (!surf) return;
+    base = (uint8 *)surf->pixels;
+    pitch = surf->pitch;
+    /* Bresenham over the on-screen segment (deltas <= 320, no overflow). */
+    dx = x2 - x1;
+    if (dx < 0) dx = -dx;
+    dy = y2 - y1;
+    if (dy < 0) dy = -dy;
+    sx = x1 < x2 ? 1 : -1;
+    sy = y1 < y2 ? 1 : -1;
+    err = dx - dy;
+    for (;;) {
+        base[(size_t)y1 * pitch + x1] = color;
+        if (x1 == x2 && y1 == y2) break;
+        e2 = err + err;
+        if (e2 > -dy) {
+            err -= dy;
+            x1 += sx;
+        }
+        if (e2 < dx) {
+            err += dx;
+            y1 += sy;
+        }
+    }
+}
+
+static void gfx_swPoint(int x, int y, int colorArg) {
+    SDL_Surface *surf = gfx_getCurPageSurface();
+    if (!surf || x < 0 || x >= surf->w || y < 0 || y >= surf->h) return;
+    ((uint8 *)surf->pixels)[(size_t)y * surf->pitch + x] = (uint8)colorArg;
+}
+
 void FAR CDECL gfx_drawLine(uint16 ux1, uint16 uy1, uint16 ux2, uint16 uy2) {
     GfxState FAR *s = gfx_getState();
-    SDL_Surface *surf;
-    uint8 *base;
-    int pitch;
     uint8 color = s->fillColor;
     int vx, vy;         /* blitOffset decomposed into a viewport origin */
     int x1, y1, x2, y2; /* endpoints translated into absolute page coords */
     int code1, code2;
-    int dx, dy, sx, sy, err, e2;
 
     /* MGRAPHIC slot 0x1f adds the blitOffset ([cs:0x1a0]) viewport base to the
      * start offset and is loop-counter-bounded; for off-screen endpoints it
@@ -1064,32 +1105,10 @@ void FAR CDECL gfx_drawLine(uint16 ux1, uint16 uy1, uint16 ux2, uint16 uy2) {
         }
     }
 
-    /* Bresenham over the now-on-screen segment (deltas <= 320, no overflow).
-     * Writes into the current page's backing surface. */
-    surf = gfx_getCurPageSurface();
-    if (!surf) return;
-    base = (uint8 *)surf->pixels;
-    pitch = surf->pitch;
-    dx = x2 - x1;
-    if (dx < 0) dx = -dx;
-    dy = y2 - y1;
-    if (dy < 0) dy = -dy;
-    sx = x1 < x2 ? 1 : -1;
-    sy = y1 < y2 ? 1 : -1;
-    err = dx - dy;
-    for (;;) {
-        base[(size_t)y1 * pitch + x1] = color;
-        if (x1 == x2 && y1 == y2) break;
-        e2 = err + err;
-        if (e2 > -dy) {
-            err -= dy;
-            x1 += sx;
-        }
-        if (e2 < dx) {
-            err += dx;
-            y1 += sy;
-        }
-    }
+    /* Submit the clipped, blitOffset-absolute segment. The software backend
+     * Bresenhams it into the current page (gfx_swLine); the GL backend records it
+     * for a crisp native-resolution replay (docs/render-2d-overlay.md, Step 4). */
+    r2d_submitLine(x1, y1, x2, y2, color);
 }
 /* drawLineWrapper - draw a line from the lineX1..lineY2 globals.
  * The original clipped the endpoints (Cohen-Sutherland) before passing them to

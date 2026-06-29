@@ -122,6 +122,7 @@ typedef struct {
     long camBase, camX, camY; /* camera-space origin axes (screen-X, screen-Y, depth) */
     int shade, colorBase, curLod;
     int dirX, dirY, dirZ; /* object facing, for the per-face back-face cull */
+    int posZ;             /* object world altitude (0 = ground/sea), for wire ground test */
     int sortHi, sortLo;   /* normalized origin depth (sort key, farthest = largest) */
     int immediate;        /* flat ground/sea (posZ==0, no sort flag): drawn first/behind */
     int seq;              /* submission index; preserves walk order among immediate objects */
@@ -143,6 +144,28 @@ static int glEdgeRunColor(int depthHi) {
     int bx = depthHi > 5000 ? 8 : depthHi > 2500 ? 7 : 0xf;
     return colorLut[bx];
 }
+
+/* 3D wire ribbon half-width as a function of the wire's world length (`len`, which
+ * is proportional to true world length with one global constant — the rotation
+ * matrices are Q15 and LOD scale is divided out before len, so it is the same for
+ * a banking plane and flat terrain). Width must grow SUBLINEARLY with length: a
+ * 40cm antenna has to be relatively fat to be visible, while a km-long road must
+ * stay thin (width-per-length spans ~60x across antenna->road). A constant or
+ * affine law can't bend that way; a power law can. Anchored on the two measured
+ * features — antenna (len~2k -> ~250) and road (len~47M -> ~100k) — POW lands ~0.6,
+ * SCALE ~2.5, and the same curve also hits masts/beams (~7k) and ridges (~24k).
+ * POW < 1 is the sublinear knee; SCALE sets overall thickness. */
+static const float WIRE_HW_SCALE = 2.5f;
+static const float WIRE_HW_POW   = 0.6f;
+
+/* A wire whose two endpoints sit at (nearly) the same WORLD altitude is a ground
+ * feature — a road, a runway marking, an outline on a ship deck. Those must lie
+ * FLAT on the ground (extruded within the horizontal plane) instead of facing the
+ * camera, or they billboard upright like a row of fences as the camera banks.
+ * A steeper wire (antenna, mast, building edge) keeps the camera-facing ribbon so
+ * it reads as a line from any angle. WIRE_FLAT_VERT is the cutoff on |dot(lineDir,
+ * worldUp)|: 0 = perfectly horizontal, 1 = vertical; below the cutoff we lay flat. */
+static const float WIRE_FLAT_VERT = 0.00030f;  /* lay flat when within ~17deg of horizontal */
 
 /* Peek a shape's finest-LOD sort flag (the 0x40 bit on the body's first opcode).
  * projectSceneObject draws an object immediately (behind the sorted queue) only
@@ -310,6 +333,10 @@ static void gl_beginScene(const R3DScene *s) {
         return;
     }
     s_delegating = 0;
+    /* This is a flight 3D frame: its HUD/MFD line & point submissions record for
+     * native-resolution replay (the 2D-only screens never reach here, so they
+     * keep rasterizing into the page). */
+    r2d_vectorBeginFrame();
 
     if (s_wide < 0) {
         /* Widescreen 3D (Hor+): on by default; F15_WIDESCREEN=0 forces 4:3. The
@@ -488,6 +515,7 @@ static void gl_submit(const R3DSubmit *o) {
     r->dirX = dirX;
     r->dirY = dirY;
     r->dirZ = dirZ;
+    r->posZ = o->posZ;
 
     /* Immediate (drawn first/behind the sorted queue) iff flat at world Z=0 with no
      * sort flag, exactly as projectSceneObject classifies it. This keeps flat
@@ -729,15 +757,78 @@ static void drawSub(const GlSub *r) {
         glEnd();
     }
 
-    /* Wire primitives. */
+    /* Wire primitives (roads, beams, mountain highlights, antennas) as world-space
+     * ribbons. Each line becomes a thin quad offset by +/- a world-space half-width;
+     * being real geometry it tapers with perspective, clips on the near plane (no
+     * explosion when an endpoint goes behind the eye) and shows no screen-aligned
+     * cap as it rotates. Work in true camera space (z = vd_ * 65536, same scale as
+     * x/y) so lengths and perpendiculars are Euclidean; divide z out only on emit.
+     *
+     * Two extrusion modes (see WIRE_FLAT_VERT): a near-horizontal wire is a GROUND
+     * feature and is extruded within the horizontal plane (perpendicular to world-
+     * up) so it stays pinned flat to the ground; a steeper wire is extruded camera-
+     * facing (perpendicular to the line and the view ray) so it always reads as a
+     * line. World-up in camera space is the matrix column the model Z axis maps
+     * through, i.e. (g_viewRotMatrix[3..5]) in this (camX,camY,depth) basis. */
     if (l->nLines) {
-        glBegin(GL_LINES);
+        float ux = (float)g_viewRotMatrix[3];
+        float uy = (float)g_viewRotMatrix[4];
+        float uz = (float)g_viewRotMatrix[5];
+        float ul = SDL_sqrtf(ux * ux + uy * uy + uz * uz);
+        if (ul > 1e-3f) { ux /= ul; uy /= ul; uz /= ul; }
+        glBegin(GL_QUADS);
         for (i = 0; i < l->nLines; i++) {
             MeshEdge *e = &l->edges[l->lines[i].edge];
+            float ax, ay, az, bx, by, bz, lx, ly, lz, len;
+            if (e->va >= l->nVerts || e->vb >= l->nVerts) continue;
+            ax = vx_[e->va]; ay = vy_[e->va]; az = vd_[e->va] * 65536.0f;
+            bx = vx_[e->vb]; by = vy_[e->vb]; bz = vd_[e->vb] * 65536.0f;
+            lx = bx - ax; ly = by - ay; lz = bz - az;
+            len = SDL_sqrtf(lx * lx + ly * ly + lz * lz);
+            if (len < 1.0f) continue;
+            float dx, dy, dz, vert;
+            dx = lx / len; dy = ly / len; dz = lz / len;
+            vert = ux * dx + uy * dy + uz * dz;
+            if (vert < 0.0f) vert = -vert; /* 0 = horizontal, 1 = vertical */
+
+            /* One width law for every wire (extrusion below is what differs). */
+            float hw = WIRE_HW_SCALE * SDL_powf(len, WIRE_HW_POW);
+
             glColorIndex(colorLut[l->lines[i].colorByte] + r->shade);
-            if (e->va < l->nVerts && e->vb < l->nVerts) {
-                glVertex3f(vx_[e->va], vy_[e->va], vd_[e->va]);
-                glVertex3f(vx_[e->vb], vy_[e->vb], vd_[e->vb]);
+            /* Lay flat only for a near-horizontal wire on a ground-level object
+             * (|posZ| small). The object's world altitude is the clean signal — a
+             * road tile sits at ~0, a flying plane carries its altitude — so a level
+             * antenna up in the air keeps the camera-facing ribbon. */
+            if (vert < WIRE_FLAT_VERT && r->posZ < 1.0f) {
+                /* GROUND: one horizontal offset for both ends = normalize(cross(up,
+                 * lineDir)) * hw — a flat parallelogram lying on the ground. */
+                float gx = uy * dz - uz * dy;
+                float gy = uz * dx - ux * dz;
+                float gz = ux * dy - uy * dx;
+                float gl = SDL_sqrtf(gx * gx + gy * gy + gz * gz);
+                if (gl < 1e-3f) continue;
+                gx = gx / gl * hw; gy = gy / gl * hw; gz = gz / gl * hw;
+                glVertex3f(ax + gx, ay + gy, (az + gz) / 65536.0f);
+                glVertex3f(bx + gx, by + gy, (bz + gz) / 65536.0f);
+                glVertex3f(bx - gx, by - gy, (bz - gz) / 65536.0f);
+                glVertex3f(ax - gx, ay - gy, (az - gz) / 65536.0f);
+            } else {
+                /* CAMERA-FACING: per-end normalize(cross(lineDir, ray)) * hw. */
+                float pax, pay, paz, pbx, pby, pbz, pl;
+                pax = ly * az - lz * ay; pay = lz * ax - lx * az; paz = lx * ay - ly * ax;
+                pl = SDL_sqrtf(pax * pax + pay * pay + paz * paz);
+                if (pl < 1e-3f) continue;
+                pax = pax / pl * hw; pay = pay / pl * hw; paz = paz / pl * hw;
+                pbx = ly * bz - lz * by; pby = lz * bx - lx * bz; pbz = lx * by - ly * bx;
+                pl = SDL_sqrtf(pbx * pbx + pby * pby + pbz * pbz);
+                if (pl < 1e-3f) continue;
+                pbx = pbx / pl * hw; pby = pby / pl * hw; pbz = pbz / pl * hw;
+                /* keep the two ends' offsets consistent so the quad doesn't twist */
+                if (pax * pbx + pay * pby + paz * pbz < 0.0f) { pbx = -pbx; pby = -pby; pbz = -pbz; }
+                glVertex3f(ax + pax, ay + pay, (az + paz) / 65536.0f);
+                glVertex3f(bx + pbx, by + pby, (bz + pbz) / 65536.0f);
+                glVertex3f(bx - pbx, by - pby, (bz - pbz) / 65536.0f);
+                glVertex3f(ax - pax, ay - pay, (az - paz) / 65536.0f);
             }
         }
         glEnd();
@@ -894,6 +985,56 @@ void r3dgl_present(SDL_Surface *page, int shakeOffset) {
     glDeleteTextures(1, &tex);
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_BLEND);
+
+    /* Native 2D vector layer (docs/render-2d-overlay.md, Step 4): replay the
+     * HUD/MFD lines & points recorded this frame at the window's native
+     * resolution, mapped through the same page letterbox (scale/lbx/lby) so they
+     * stay aligned with the UI box, with a line width relative to the native
+     * scale. This is the crisp vector HUD — the software-rasterized low-res
+     * version was suppressed (the submissions were recorded, not drawn). */
+    {
+        int n, i;
+        const R2DVectorPrim *prims = r2d_vectorPrims(&n);
+        SDL_Palette *vpal = gfx_getPalette();
+        if (n > 0 && vpal) {
+            float lw = scale < 1.0f ? 1.0f : scale;
+            glLineWidth(lw);
+            glBegin(GL_LINES);
+            for (i = 0; i < n; i++) {
+                const R2DVectorPrim *p = &prims[i];
+                SDL_Color c;
+                if (p->kind != R2D_PRIM_LINE) continue;
+                c = vpal->colors[p->color];
+                glColor3ub(c.r, c.g, c.b);
+                glVertex2f((float)lbx + ((float)p->x1 + 0.5f) * scale - shake,
+                           (float)lby + ((float)p->y1 + 0.5f) * scale);
+                glVertex2f((float)lbx + ((float)p->x2 + 0.5f) * scale - shake,
+                           (float)lby + ((float)p->y2 + 0.5f) * scale);
+            }
+            glEnd();
+            /* Points (pitch-ladder marks) as scale x scale cells so they keep
+             * their pixel footprint at native size. */
+            glBegin(GL_QUADS);
+            for (i = 0; i < n; i++) {
+                const R2DVectorPrim *p = &prims[i];
+                SDL_Color c;
+                float x0, y0, x1q, y1q;
+                if (p->kind != R2D_PRIM_POINT) continue;
+                c = vpal->colors[p->color];
+                glColor3ub(c.r, c.g, c.b);
+                x0 = (float)lbx + (float)p->x1 * scale - shake;
+                y0 = (float)lby + (float)p->y1 * scale;
+                x1q = x0 + scale;
+                y1q = y0 + scale;
+                glVertex2f(x0, y0);
+                glVertex2f(x1q, y0);
+                glVertex2f(x1q, y1q);
+                glVertex2f(x0, y1q);
+            }
+            glEnd();
+        }
+        r2d_vectorMarkPresented();
+    }
 
     SDL_GL_SwapWindow(s_win);
 }

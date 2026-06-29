@@ -116,6 +116,75 @@ void r2d_registerSoftwarePresent(void (*present)(struct SDL_Surface *page, int s
     s_swPresent = present;
 }
 
+/* ---- Native 2D vector layer (Step 4) ----------------------------------- */
+
+static void (*s_swLine)(int, int, int, int, int);
+static void (*s_swPoint)(int, int, int);
+
+static R2DVectorPrim *s_prims;
+static int s_primCount, s_primCap;
+
+void r2d_registerSoftwarePrims(void (*line)(int, int, int, int, int),
+                               void (*point)(int, int, int)) {
+    s_swLine = line;
+    s_swPoint = point;
+}
+
+/* Set for the duration of a GL flight frame (between gl_beginScene's main 3D view
+ * and the present). 2D submissions only record for native replay while this is
+ * set — pure-2D screens (debrief/briefing/menus) have no 3D pass, so their lines
+ * rasterize into the page as before (accumulating, correctly ordered with their
+ * sprites). */
+static int s_vectorFrame;
+
+void r2d_vectorBeginFrame(void) { s_vectorFrame = 1; }
+
+int r2d_vectorActive(void) {
+    static int cached = -1;
+    if (!s_vectorFrame) return 0;
+    if (cached < 0) {
+        const char *e = SDL_getenv("F15_VECTOR2D");
+        cached = (e && (e[0] == '0' || e[0] == 'n' || e[0] == 'N')) ? 0 : 1;
+    }
+    return cached;
+}
+
+static void primAppend(int x1, int y1, int x2, int y2, int color, int kind) {
+    R2DVectorPrim *p;
+    if (s_primCount >= s_primCap) {
+        int cap = s_primCap ? s_primCap * 2 : 256;
+        R2DVectorPrim *grown = (R2DVectorPrim *)SDL_realloc(s_prims, (size_t)cap * sizeof(*grown));
+        if (!grown) return;
+        s_prims = grown;
+        s_primCap = cap;
+    }
+    p = &s_prims[s_primCount++];
+    p->x1 = (short)x1; p->y1 = (short)y1;
+    p->x2 = (short)x2; p->y2 = (short)y2;
+    p->color = (unsigned char)color;
+    p->kind = (unsigned char)kind;
+}
+
+void r2d_submitLine(int x1, int y1, int x2, int y2, int color) {
+    if (r2d_vectorActive()) primAppend(x1, y1, x2, y2, color, R2D_PRIM_LINE);
+    else if (s_swLine) s_swLine(x1, y1, x2, y2, color);
+}
+
+void r2d_submitPoint(int x, int y, int color) {
+    if (r2d_vectorActive()) primAppend(x, y, x, y, color, R2D_PRIM_POINT);
+    else if (s_swPoint) s_swPoint(x, y, color);
+}
+
+const R2DVectorPrim *r2d_vectorPrims(int *count) {
+    if (count) *count = s_primCount;
+    return s_prims;
+}
+
+void r2d_vectorMarkPresented(void) {
+    s_primCount = 0;
+    s_vectorFrame = 0;
+}
+
 void r2d_present(struct SDL_Surface *page, int shakeOffset) {
     if (r3dgl_active()) {
         r3dgl_present(page, shakeOffset);

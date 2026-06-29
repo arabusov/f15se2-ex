@@ -379,7 +379,7 @@ static void drawInstrumentGauges(void) {
         drawLine(45, 96, 45, 15);
         drawLine(275, 96, 275, 15);
         drawLine(275, 15, 232, 3);
-        drawLine(232, 3, 90, 3);
+        drawLine(232, 3, 89, 3); /* meet the left diagonal's (89,3) exactly (was 90: 1px gap) */
         drawLine(45, 15, 89, 3);
     } else {
         drawLine(103, 96, 103, 63);
