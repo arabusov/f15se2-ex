@@ -21,9 +21,13 @@ struct SDL_Surface;
  * only if the context actually came up, else falls back to software. */
 int r3dgl_wantGL(void);
 
-/* Set the GL framebuffer attributes (depth buffer, double-buffer). Must run
- * before the window is created. */
-void r3dgl_setGLAttributes(void);
+/* Set the GL framebuffer attributes (depth buffer, double-buffer, and msaaSamples-x
+ * multisampling when msaaSamples > 0). Must run before the window is created. */
+void r3dgl_setGLAttributes(int msaaSamples);
+
+/* Preferred MSAA sample count for the GL framebuffer (0 = off). gfx_impl.c requests
+ * this, and retries with 0 if the GL context won't come up with it. */
+int r3dgl_msaaSamples(void);
 
 /* Create the GL context on `win` and make it current. Returns nonzero on success
  * (the R3DBackend init() probe then claims the environment). */

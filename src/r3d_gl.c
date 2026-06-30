@@ -65,9 +65,18 @@ int r3dgl_wantGL(void) {
     return !want || SDL_strcasecmp(want, "software") != 0;
 }
 
-void r3dgl_setGLAttributes(void) {
+/* MSAA multisampling for the GL framebuffer. 4x is effectively free on any desktop
+ * GPU and noticeably cleans up the flat-shaded polygon edges and the native-res
+ * vector HUD. gfx_impl.c retries with 0 if the context won't come up with it. */
+static const int GL_MSAA_SAMPLES = 4;
+
+int r3dgl_msaaSamples(void) { return GL_MSAA_SAMPLES; }
+
+void r3dgl_setGLAttributes(int msaaSamples) {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, msaaSamples > 0 ? 1 : 0);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, msaaSamples > 0 ? msaaSamples : 0);
 }
 
 int r3dgl_initContext(SDL_Window *win) {
@@ -80,12 +89,14 @@ int r3dgl_initContext(SDL_Window *win) {
     SDL_GL_MakeCurrent(win, s_ctx);
     SDL_GL_SetSwapInterval(1);
     s_glFogCoordf = (void (*)(GLfloat))SDL_GL_GetProcAddress("glFogCoordf");
+    if (GL_MSAA_SAMPLES > 0) glEnable(GL_MULTISAMPLE); /* no-op if the format has 0 samples */
     {
-        GLint depthBits = 0;
+        GLint depthBits = 0, samples = 0;
         glGetIntegerv(GL_DEPTH_BITS, &depthBits);
-        LogInfo(("GL: %s / %s, depth bits=%d",
+        glGetIntegerv(GL_SAMPLES, &samples);
+        LogInfo(("GL: %s / %s, depth bits=%d, MSAA samples=%d",
                  (const char *)glGetString(GL_RENDERER),
-                 (const char *)glGetString(GL_VERSION), (int)depthBits));
+                 (const char *)glGetString(GL_VERSION), (int)depthBits, (int)samples));
     }
     s_active = 1;
     return 1;

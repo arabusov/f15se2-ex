@@ -57,26 +57,42 @@ void gfx_videoInit(void) {
     r2d_registerSoftwarePrims(gfx_swLine, gfx_swPoint);
 
     s_useGL = r3dgl_wantGL();
-    if (s_useGL) r3dgl_setGLAttributes();
 
-    sdlWindow = SDL_CreateWindow(
-        "F-15 SE2 EX v0.9.0",
-        INITIAL_WINDOW_WIDTH,
-        INITIAL_WINDOW_HEIGHT,
-        SDL_WINDOW_RESIZABLE | (s_useGL ? SDL_WINDOW_OPENGL : 0));
-    if (!sdlWindow)
-        LogCritical(("Window creation failed: %s", SDL_GetError()));
+    /* GL path: request the framebuffer attributes (incl. MSAA) before window
+     * creation, then bring the context up. MSAA can force a pixel format the driver
+     * can't satisfy, so if the context won't come up we retry once without it before
+     * giving up GL entirely — losing only the anti-aliasing, not the whole backend. */
+    if (s_useGL) {
+        int msaa = r3dgl_msaaSamples();
+        for (;;) {
+            r3dgl_setGLAttributes(msaa);
+            sdlWindow = SDL_CreateWindow("F-15 SE2 EX v0.9.0",
+                                         INITIAL_WINDOW_WIDTH, INITIAL_WINDOW_HEIGHT,
+                                         SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+            if (sdlWindow && r3dgl_initContext(sdlWindow)) break; /* GL up */
+            if (sdlWindow) { SDL_DestroyWindow(sdlWindow); sdlWindow = NULL; }
+            if (msaa > 0) {
+                LogWarn(("GL init failed with %dx MSAA; retrying without it", msaa));
+                msaa = 0;
+                continue;
+            }
+            LogCritical(("GL init failed; falling back to software renderer"));
+            s_useGL = false;
+            break;
+        }
+    }
+
+    if (!sdlWindow) {
+        sdlWindow = SDL_CreateWindow("F-15 SE2 EX v0.9.0", INITIAL_WINDOW_WIDTH,
+                                     INITIAL_WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE);
+        if (!sdlWindow)
+            LogCritical(("Window creation failed: %s", SDL_GetError()));
+    }
 
     /* Enable SDL_EVENT_TEXT_INPUT so the keyboard slots (ovlimpl.c) receive
      * shifted/localised ASCII for pilot-name entry. */
     SDL_StartTextInput(sdlWindow);
 
-    if (s_useGL) {
-        if (!r3dgl_initContext(sdlWindow)) {
-            LogCritical(("GL init failed; falling back to software renderer"));
-            s_useGL = false;
-        }
-    }
     if (s_useGL) return;
 
     sdlRenderer = SDL_CreateRenderer(sdlWindow, NULL);
