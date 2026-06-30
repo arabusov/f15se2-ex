@@ -4245,6 +4245,8 @@ uint16 cursorX;
 uint16 cursorY;
 int hasVgaMode;
 int spriteBufSeg;
+int g_dbiconsBuf;
+struct R2DImage *g_enBacking;
 void *vgaBufSeg;
 int vgaBufOffset;
 void *vgaBufSeg2;

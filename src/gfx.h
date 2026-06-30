@@ -34,6 +34,27 @@ bool video_setHiRes(void);
 struct SDL_Surface *gfx_getHiResSurface(void);
 void gfx_presentHiRes(void);
 
+/* ---- Off-buffer save/restore images (docs/render-2d-overlay.md, Step 5) ----
+ * The page model's save-under scratch (the DOS-era offscreen page) becomes an
+ * owned r2d image: capture a page region into it, draw it back later. These thin
+ * wrappers bridge page indices to the r2d image API so the game code stays free
+ * of r2d/SDL surface details. Coordinates match gfx_copyRect's, so a save-under
+ * that used a scratch page maps 1:1 onto the same (x,y) in the image. */
+struct R2DImage;
+struct R2DImage *gfx_allocImage(int w, int h);  /* blank owned image; NULL on failure */
+void gfx_freeImage(struct R2DImage *img);        /* release; safe on NULL */
+/* Copy a w x h rect from page `srcPage` (srcX,srcY) into `img` at (dstX,dstY). */
+void gfx_captureToImage(struct R2DImage *img, int srcPage, int srcX, int srcY,
+                        int dstX, int dstY, int w, int h);
+/* Copy a w x h rect from `img` (srcX,srcY) into page `dstPage` at (dstX,dstY). */
+void gfx_restoreFromImage(struct R2DImage *img, int dstPage, int srcX, int srcY,
+                          int dstX, int dstY, int w, int h);
+/* Opaque copy of a w x h rect from sprite buffer `handle` (srcX,srcY) into page
+ * `dstPage` at (dstX,dstY). For asset sheets drawn opaquely (e.g. the debrief
+ * popup icons), as distinct from gfx_blitSprite's transparent (skip-index-0) blit. */
+void gfx_drawSpriteOpaque(int handle, int srcX, int srcY, int dstPage,
+                          int dstX, int dstY, int w, int h);
+
 /* ---- graphics slots (the public draw API, first slot 0, 84 used) ---- */
 /* dseg:0xab8 */
 int FAR CDECL gfx_allocPage(int pageNum);                                     /* slot 0x00: alloc 64K page, returns seg */

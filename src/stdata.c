@@ -126,7 +126,7 @@ struct PageDesc page2Desc = {
     {0, 0, 0, 0, 0, 0, 0, 0}, /* pad3 */
     (int16 *)&page2Desc       /* selfPtr (page2NumPtr) */
 };
-int16 *page2NumPtr = (int16 *)&page2Desc;
+struct R2DImage *g_stBacking;
 struct PageDesc page3Desc = {
     3,                        /* pageNum */
     {0, 0},                   /* pad1 */

@@ -1947,10 +1947,7 @@ int16 g_tacmapIndicators[156] = {
    them through. */
 int16 g_viewportDescFront[11] = {0, 2, 2, 0, 0, 0, 1, 0, 0x60, 0, 0x13F};
 int16 *g_pageFront = g_viewportDescFront;
-int16 g_viewportDescMid[11] = {1, 2, 2, 0, 0, 0, 1, 0, 0x60, 0, 0x13F};
-int16 *g_pageBack = g_viewportDescMid;
-int16 g_viewportDescBack[11] = {2, 2, 2, 0, 0, 0, 0, 0, 0xC7, 0, 0x13F};
-int16 *g_pageOffscreen = g_viewportDescBack;
+struct R2DImage *g_eg2dBacking;
 int16 buf6data_0[11] = {0, 2, 2, 0, 0, 0, 1, 0x70, 0xA8, 0x18, 0x60};
 int16 buf6data_1[11] = {0, 2, 2, 0, 0, 0, 1, 0x80, 0xB8, 0xE8, 0x130};
 int16 *g_mapTerrainMode = buf6data_0;

@@ -147,15 +147,14 @@ void stepFlightModel(void) {
         goto switch_break;
     case SCAN_ALT_B:
         if (g_hudVisible != 0) {
-            gfx_copyRect(*g_pageFront, 0, 97, *g_pageOffscreen, 0, 97, 320, 103);
+            gfx_captureToImage(g_eg2dBacking, *g_pageFront, 0, 97, 0, 97, 320, 103);
         }
         setDrawColor(0);
         fillRectBoth(0, 0, 319, 199);
         blitSprite(0, 0, 113, 55, 12, 7, 0);
         waitForKeyPress();
         if (g_hudVisible != 0) {
-            gfx_copyRect(*g_pageOffscreen, 0, 97, *g_pageFront, 0, 97, 320, 103);
-            gfx_copyRect(*g_pageOffscreen, 0, 97, *g_pageBack, 0, 97, 320, 103);
+            gfx_restoreFromImage(g_eg2dBacking, *g_pageFront, 0, 97, 0, 97, 320, 103);
             UpdateThrottleState();
         }
         goto switch_break;
@@ -920,9 +919,7 @@ void renderFrame() {
         gfx_waitRetrace();
         if (g_hudVisible != 0) {
             gfx_nop23();
-            // the pointer arguments are probably rastports, RectCopy?
-            gfx_copyRect(*g_pageOffscreen, 0, 97, *g_pageFront, 0, 97, 320, 103);
-            gfx_copyRect(*g_pageOffscreen, 0, 97, *g_pageBack, 0, 97, 320, 103);
+            gfx_restoreFromImage(g_eg2dBacking, *g_pageFront, 0, 97, 0, 97, 320, 103);
             UpdateThrottleState();
             drawWeaponAmmo();
             drawWeaponSelectMarker(missileSpecIndex);
@@ -933,7 +930,7 @@ void renderFrame() {
             fillPanelBox(3, 3);
             g_lockedTargetKilled = 0;
         } else {
-            gfx_copyRect(*g_pageFront, 0, 97, *g_pageOffscreen, 0, 97, 320, 103);
+            gfx_captureToImage(g_eg2dBacking, *g_pageFront, 0, 97, 0, 97, 320, 103);
         }
     }
     if (keyValue != g_lastViewKey) {
@@ -948,10 +945,9 @@ void renderFrame() {
                                                                                   : "Rear.Pic",
                                  *g_pageFront);
             }
-            gfx_copyRect(*g_pageFront, 0, 97, *g_pageBack, 0, 97, 320, 103);
-            g_pageFront[8] = g_pageBack[8] = 96;
+            g_pageFront[8] = 96;
         } else {
-            g_pageFront[8] = g_pageBack[8] = g_hudVisible != 0 ? 96 : 199;
+            g_pageFront[8] = g_hudVisible != 0 ? 96 : 199;
         }
         g_lastViewKey = keyValue;
     }

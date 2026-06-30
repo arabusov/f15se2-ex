@@ -57,6 +57,11 @@ extern char slotInfoTable[]; /* slot info table, 16 bytes per slot */
 extern char ejectedFlag;
 extern const int popupSpriteY[];
 extern const int popupSpriteX[];
+/* The popup save-under backing image (Step 5; replaces the page-1 scratch region
+ * the debrief popup stored what's behind it in). */
+struct R2DImage;
+extern struct R2DImage *g_enBacking;
+extern int g_dbiconsBuf; /* sprite buffer holding the decoded dbicons.spr popup icon sheet */
 extern struct SpriteParams *spriteAir;
 extern struct SpriteParams *spriteSam;
 extern struct SpriteParams *spriteGround;

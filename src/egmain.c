@@ -96,8 +96,13 @@ void drawCockpit() {
     } else {
         openBlitClosePic("cockpit.PIC", 1);
     }
-    gfx_copyRect(1, 0, 96, 0, 0, 96, 320, 104);
-    gfx_copyRect(1, 0, 96, 2, 0, 96, 320, 104);
+    /* Snapshot the clean lower cockpit into the save-under backing image (Step 5;
+     * was a copy into the offscreen page). The cockpit strip / scope panel /
+     * map-marker save-unders restore their regions from here. (The former page-1->0
+     * seed copy is gone: with the single back buffer the cockpit PIC already landed
+     * in the one buffer.) */
+    if (!g_eg2dBacking) g_eg2dBacking = gfx_allocImage(320, 200);
+    gfx_captureToImage(g_eg2dBacking, 1, 0, 96, 0, 96, 320, 104);
 }
 
 // ==== seg000:0x211 ====

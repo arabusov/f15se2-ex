@@ -197,7 +197,11 @@ void animateArm(int a, int b) {
     armPosition = b;
     spriteIdx = armSpriteIndex[b];
     if (a == -1) {
-        gfx_copyRect(*page1NumPtr, 0, 0, *page2NumPtr, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        /* Snapshot the clean briefing into the save-under backing image (Step 5;
+         * was a copy into the page-2 clean backup). The arm-cursor erase below
+         * restores from here. */
+        if (!g_stBacking) g_stBacking = gfx_allocImage(SCREEN_WIDTH, SCREEN_HEIGHT);
+        gfx_captureToImage(g_stBacking, *page1NumPtr, 0, 0, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     }
     if (b != -1) {
         if (b < 5 && enableHighlight != 0) {
@@ -213,7 +217,7 @@ void animateArm(int a, int b) {
         spriteBlitY = armBlitY[spriteIdx];
         spriteBlitW = armBlitW[spriteIdx];
         spriteBlitH = armBlitH[spriteIdx];
-        gfx_copyRect(*page2NumPtr, spriteBlitX, spriteBlitY, *page1NumPtr, spriteBlitX, spriteBlitY, spriteBlitW, spriteBlitH);
+        gfx_restoreFromImage(g_stBacking, *page1NumPtr, spriteBlitX, spriteBlitY, spriteBlitX, spriteBlitY, spriteBlitW, spriteBlitH);
         if (b < 5 && enableHighlight != 0) {
             gfx_switchColor(page1NumPtr, 113, b * 21 + 34, 297, b * 21 + 42, COLOR_BRIEF_DESC_HL, COLOR_BRIEF_DESC_NORMAL);
         }

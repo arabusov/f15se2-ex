@@ -78,7 +78,10 @@ open_dbicons:
     gfx_waitRetrace();
     fileClose(worldBufHandle);
     gfx_setFadeSteps(8);
-    openShowPic("dbicons.spr", 1);
+    /* Decode the popup icon sheet into a sprite buffer image (Step 5; was decoded
+     * into page 1). Same decoder as a page decode, so pixel-identical. */
+    g_dbiconsBuf = gfx_allocSpriteBuf();
+    loadPic("dbicons.spr", g_dbiconsBuf);
 
     spriteMapAreaDef.bufPtr = a;
     spriteStatusBarDef.bufPtr = a;

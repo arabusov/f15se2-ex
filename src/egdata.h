@@ -164,8 +164,11 @@ extern int16 g_lastViewKey;
 extern const int16 ammoNumX[];
 extern int16 g_tacmapIndicators[];
 extern int16 *g_pageFront;
-extern int16 *g_pageBack;
-extern int16 *g_pageOffscreen;
+/* The clean-cockpit save-under backing image (Step 5; replaces the offscreen
+ * scratch page). A full-screen r2d image holding the static lower cockpit so the
+ * cockpit strip / scope panel / map-marker save-unders can restore from it. */
+struct R2DImage;
+extern struct R2DImage *g_eg2dBacking;
 extern int16 g_mapZoomLevel;
 extern char g_rollWasNonzero;
 extern int16 g_rotationCounter;

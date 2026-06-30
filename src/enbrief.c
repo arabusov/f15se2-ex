@@ -408,7 +408,7 @@ void drawMenuItem(const MenuItem *items, unsigned int index, int16 *gfxPage) {
             drawWrappedText(gfxPage, scoreString, 80, 240, 130, 8);
             clearRect(gfxPage, 240, 100, 300, 126);
             if (popupVisible == 1) {
-                gfx_copyRect(1, 0, POPUP_SAVE_Y, 0, popupX, popupY, POPUP_WIDTH, POPUP_HEIGHT);
+                gfx_restoreFromImage(g_enBacking, 0, 0, POPUP_SAVE_Y, popupX, popupY, POPUP_WIDTH, POPUP_HEIGHT);
                 popupVisible = 0;
             }
             curRecordIdx = 0;
@@ -625,7 +625,7 @@ void animateFlightPath(int16 *gfxPage) {
     int pad;
 
     if (popupVisible == 1) {
-        gfx_copyRect(1, 0, POPUP_SAVE_Y, 0, popupX, popupY, POPUP_WIDTH, POPUP_HEIGHT);
+        gfx_restoreFromImage(g_enBacking, 0, 0, POPUP_SAVE_Y, popupX, popupY, POPUP_WIDTH, POPUP_HEIGHT);
         popupVisible = 0;
     }
     clearRect(gfxPage, 233, 30, 319, 69);
@@ -918,7 +918,7 @@ void showEventPopup(void) {
     int spriteIdx;
 
     if (popupVisible == 1) {
-        gfx_copyRect(1, 0, POPUP_SAVE_Y, 0, popupX, popupY, POPUP_WIDTH, POPUP_HEIGHT);
+        gfx_restoreFromImage(g_enBacking, 0, 0, POPUP_SAVE_Y, popupX, popupY, POPUP_WIDTH, POPUP_HEIGHT);
         popupVisible = 0;
     }
     spriteIdx = flightRecords[curRecordIdx].status & STATUS_TYPE_MASK;
@@ -981,7 +981,10 @@ void showEventPopup(void) {
         popupX = mapToScreenX(flightRecords[curRecordIdx].mapX) + mapViewX1 + 10;
         popupY = mapToScreenY(flightRecords[curRecordIdx].mapY) + mapViewY1 - 40;
     }
-    gfx_copyRect(0, popupX, popupY, 1, 0, POPUP_SAVE_Y, POPUP_WIDTH, POPUP_HEIGHT);
-    gfx_copyRect(1, popupSpriteX[spriteIdx], popupSpriteY[spriteIdx], 0, popupX, popupY, POPUP_WIDTH, POPUP_HEIGHT);
+    /* Save what's behind the popup into the backing image, then draw the popup icon
+     * opaquely from the dbicons sprite-buffer image (Step 5; both were page copies). */
+    if (!g_enBacking) g_enBacking = gfx_allocImage(LOGICAL_WIDTH, LOGICAL_HEIGHT);
+    gfx_captureToImage(g_enBacking, 0, popupX, popupY, 0, POPUP_SAVE_Y, POPUP_WIDTH, POPUP_HEIGHT);
+    gfx_drawSpriteOpaque(g_dbiconsBuf, popupSpriteX[spriteIdx], popupSpriteY[spriteIdx], 0, popupX, popupY, POPUP_WIDTH, POPUP_HEIGHT);
     popupVisible = 1;
 }

@@ -249,7 +249,7 @@ void redrawTacMap(int centerX, int centerY) {
     if ((char)gfx_getDisplayPage() == 0) {
         cacheScopePanel();
     } else {
-        gfx_copyRect(*g_pageBack, 24, 112, *g_pageOffscreen, 24, 112, 72, 56);
+        gfx_captureToImage(g_eg2dBacking, *g_pageFront, 24, 112, 24, 112, 72, 56);
     }
     restoreScopePanel();
     resetSimObjectLocks();
@@ -470,13 +470,11 @@ void drawHudViewLine(int x1, int y1, int x2, int y2) {
 // ==== seg000:0x9e44 ====
 void setDrawColor(int color) {
     g_pageFront[2] = color;
-    g_pageBack[2] = color;
 }
 
 // ==== seg000:0x9e5d ====
 void fillRectBoth(int x1, int y1, int x2, int y2) {
     fillSpanRect(g_pageFront, x1, y1, x2, y2);
-    fillSpanRect(g_pageBack, x1, y1, x2, y2);
 }
 
 // ==== seg000:0x9e94 ====
@@ -496,7 +494,6 @@ void switchIndicatorColor(int indicatorIdx, int color) {
     if (g_hudVisible == 0) goto done;
     if (*(g_tacmapIndicators + indicatorIdx * 5 + 7) != color) {
         gfx_switchColor(g_pageFront, *(g_tacmapIndicators + indicatorIdx * 5 + 3), *(g_tacmapIndicators + indicatorIdx * 5 + 4), *(g_tacmapIndicators + indicatorIdx * 5 + 5), *(g_tacmapIndicators + indicatorIdx * 5 + 6), *(g_tacmapIndicators + indicatorIdx * 5 + 7), color);
-        gfx_switchColor(g_pageBack, *(g_tacmapIndicators + indicatorIdx * 5 + 3), *(g_tacmapIndicators + indicatorIdx * 5 + 4), *(g_tacmapIndicators + indicatorIdx * 5 + 5), *(g_tacmapIndicators + indicatorIdx * 5 + 6), *(g_tacmapIndicators + indicatorIdx * 5 + 7), color);
         *(g_tacmapIndicators + indicatorIdx * 5 + 7) = color;
     }
 done:;
@@ -525,16 +522,11 @@ void fillPanelBox(int panelId, int color) {
 // ==== seg000:0xa0cb ====
 void drawStringBothPages(const char *text, int screenX, int screenY, int color) {
     egDrawStringCentered(g_pageFront, text, screenX, screenY, color);
-    egDrawStringCentered(g_pageBack, text, screenX, screenY, color);
 }
 
 // ==== seg000:0xa0fe ====
 void drawStringActivePage(const char *text, int screenX, int screenY, int color) {
-    if (g_drawPage == 0) {
-        egDrawStringCentered(g_pageFront, text, screenX, screenY, color);
-    } else {
-        egDrawStringCentered(g_pageBack, text, screenX, screenY, color);
-    }
+    egDrawStringCentered(g_pageFront, text, screenX, screenY, color);
 }
 
 // ==== seg000:0xa13a ====

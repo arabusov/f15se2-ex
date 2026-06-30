@@ -124,6 +124,12 @@ static void (*s_swPoint)(int, int, int);
 static R2DVectorPrim *s_prims;
 static int s_primCount, s_primCap;
 
+/* When set, submissions rasterize into the page even on a GL flight frame (for
+ * the radar-scope MFD, whose lines must compose under their blip sprites). */
+static int s_forceRaster;
+
+void r2d_setForceRaster(int on) { s_forceRaster = on; }
+
 void r2d_registerSoftwarePrims(void (*line)(int, int, int, int, int),
                                void (*point)(int, int, int)) {
     s_swLine = line;
@@ -166,12 +172,12 @@ static void primAppend(int x1, int y1, int x2, int y2, int color, int kind) {
 }
 
 void r2d_submitLine(int x1, int y1, int x2, int y2, int color) {
-    if (r2d_vectorActive()) primAppend(x1, y1, x2, y2, color, R2D_PRIM_LINE);
+    if (r2d_vectorActive() && !s_forceRaster) primAppend(x1, y1, x2, y2, color, R2D_PRIM_LINE);
     else if (s_swLine) s_swLine(x1, y1, x2, y2, color);
 }
 
 void r2d_submitPoint(int x, int y, int color) {
-    if (r2d_vectorActive()) primAppend(x, y, x, y, color, R2D_PRIM_POINT);
+    if (r2d_vectorActive() && !s_forceRaster) primAppend(x, y, x, y, color, R2D_PRIM_POINT);
     else if (s_swPoint) s_swPoint(x, y, color);
 }
 

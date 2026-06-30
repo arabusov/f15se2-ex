@@ -11,7 +11,10 @@
 extern int16 *bufPtr;
 extern struct PageDesc page1Desc;
 extern int16 *page1NumPtr;
-extern int16 *page2NumPtr;
+/* The clean-briefing save-under backing image (Step 5; replaces the page-2 clean
+ * backup the arm-cursor save-under restored from). */
+struct R2DImage;
+extern struct R2DImage *g_stBacking;
 extern const char *missTheaNames[];
 extern const char *missTheaDesc[];
 extern const char *missDiffLevels[];

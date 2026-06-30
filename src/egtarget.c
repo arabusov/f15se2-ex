@@ -513,7 +513,6 @@ void drawHudWorldOverlay(void) {
 
     g_playerPlaneFlags &= ~0x200;
     g_pageFront[1] = 4;
-    g_pageBack[1] = 4;
 
     if (g_activePanelMode == 0x13) {
         if (g_currentWeaponType == 2 || g_currentWeaponType == 0) {
@@ -630,7 +629,6 @@ void drawHudWorldOverlay(void) {
     }
 
     g_pageFront[1] = 2;
-    g_pageBack[1] = 2;
 
     if (g_scopeSweepTimer > 0 && g_threatLabelTarget < 0) {
         idx = -1 - g_threatLabelTarget;

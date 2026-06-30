@@ -277,6 +277,17 @@ void gfx_paletteRGB(int idx, uint8 *r, uint8 *g, uint8 *b) {
 static SDL_Surface *ensurePage(int page) {
     GfxState FAR *s = gfx_getState();
     if (page < 0 || page >= 16) return NULL;
+    /* Step 5.2: pages 0 (front/visible) and 1 (back/composite) collapse onto one
+     * hidden back buffer. The DOS double buffer is redundant natively — the page
+     * surface is only snapshotted into the window at present time (SDL texture
+     * upload / GL composite), so a single draw surface can't tear, and every
+     * compose-then-present sequence finishes drawing before it presents. All
+     * page-1 references resolve to page 0's surface; the per-frame back->front
+     * copy (gfx_dacAnimate) and the front/back dual writes become self-copies.
+     * This also subsumes the old alternate-view flicker fix (no front/back
+     * divergence can exist). Pre-req: 5.1 moved every non-double-buffer use of
+     * pages 0/1 off the page array (see docs/render-2d-overlay.md). */
+    if (page == 1) page = 0;
     if (!s->pageSurfaces[page]) {
         SDL_Surface *surf = SDL_CreateSurface(LOGICAL_WIDTH, LOGICAL_HEIGHT,
                                               SDL_PIXELFORMAT_INDEX8);
@@ -820,6 +831,32 @@ void FAR CDECL gfx_copyRect(int srcPage, uint16 srcX, uint16 srcY,
     r2d_blit(ensurePage(srcPage), (int)srcX, (int)srcY,
              ensurePage(dstPage), (int)dstX, (int)dstY,
              width, height, -1);
+}
+
+/* ---- Off-buffer save/restore images (Step 5) ----
+ * Bridge page indices to the r2d image API: gfx_captureToImage copies a page
+ * region into an owned image (the save-under), gfx_restoreFromImage copies it
+ * back. They replace the DOS-era offscreen-page scratch, which was a separate
+ * 320x200 surface in the page array; an image is the same surface, just no longer
+ * a "page". Coordinates match gfx_copyRect's so call sites map 1:1. */
+struct R2DImage *gfx_allocImage(int w, int h) { return r2d_registerImage(w, h); }
+void gfx_freeImage(struct R2DImage *img) { r2d_releaseImage(img); }
+
+void gfx_captureToImage(struct R2DImage *img, int srcPage, int srcX, int srcY,
+                        int dstX, int dstY, int w, int h) {
+    r2d_blit(ensurePage(srcPage), srcX, srcY,
+             r2d_imageSurface(img), dstX, dstY, w, h, -1);
+}
+
+void gfx_restoreFromImage(struct R2DImage *img, int dstPage, int srcX, int srcY,
+                          int dstX, int dstY, int w, int h) {
+    r2d_drawImage(img, srcX, srcY, w, h, ensurePage(dstPage), dstX, dstY, -1);
+}
+
+void gfx_drawSpriteOpaque(int handle, int srcX, int srcY, int dstPage,
+                          int dstX, int dstY, int w, int h) {
+    r2d_blit(gfx_getSpriteSurface(handle), srcX, srcY,
+             ensurePage(dstPage), dstX, dstY, w, h, -1);
 }
 
 /* ---- Slot 0x29: gfx_switchColor ---- */
@@ -1498,29 +1535,12 @@ void FAR CDECL gfx_clearVga(void) {
     for (y = 0; y < front->h; y++)
         SDL_memset((uint8 *)front->pixels + (size_t)y * front->pitch, 0, front->w);
 }
-/* Slot 0x2c: present the composited back buffer to the visible page.
- * MGRAPHIC's slot 0x2c copies the full 64000-byte page from pageSegs[1] (the
- * back buffer, where gameMainLoop's renderFrame/renderHudFrame composite the
- * frame) to pageSegs[0] (the visible page), then sets displayPage=1. It is
- * called once per frame from gameMainLoop (egame_rc.asm). Args (AX/BX) ignored.
- * Without this the dynamic frame never reaches the screen — only the static
- * cockpit copied to page 0 at startup, plus direct-to-page-0 draws, show. */
+/* Slot 0x2c: advance the fire colour-cycle and present the frame, once per frame
+ * from gameMainLoop (egame_rc.asm). MGRAPHIC copied the back page to the visible
+ * page here; under the single back buffer (Step 5.2) compose and present target
+ * the one surface, so the copy is gone — just present it. Args (AX/BX) ignored. */
 void FAR CDECL gfx_dacAnimate(void) {
     GfxState FAR *s = gfx_getState();
-    /* Copy from the page the frame was just composited into (curPage), not a
-     * hardcoded page 1: the side/rear views render into page 0, so sourcing page 1
-     * here copied a stale frame over the live one (the alternate-view flicker). */
-    SDL_Surface *back = ensurePage(s->curPage);
-    SDL_Surface *front = ensurePage(0);
-    if (back && front && back != front) {
-        int y, w = (back->w < front->w) ? back->w : front->w;
-        int h = (back->h < front->h) ? back->h : front->h;
-        for (y = 0; y < h; y++) {
-            SDL_memcpy((uint8 *)front->pixels + (size_t)y * front->pitch,
-                       (const uint8 *)back->pixels + (size_t)y * back->pitch,
-                       (size_t)w);
-        }
-    }
     s->displayPage = 1;
     /* Advance the fire colour-cycle on a fixed FIRE_CYCLE_HZ wall-clock schedule. */
     {

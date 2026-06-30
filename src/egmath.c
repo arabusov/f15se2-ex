@@ -56,7 +56,7 @@ void drawWorldObject(int shapeId, long worldX, long worldY, int altitude, int ob
     int shiftAmt;
 
     dataOff = shapeDataOffset(shapeId);
-    drawPg = (g_drawPage == 0) ? g_pageFront : g_pageBack;
+    drawPg = g_pageFront;
     relX = worldX - g_ViewX;
     relY = worldY + g_ViewY - 0x01000000L;
     altDiff = altitude - g_viewZ;
