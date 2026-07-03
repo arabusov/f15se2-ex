@@ -109,6 +109,11 @@ void gfx_videoInit(void) {
      * size and the virtual->window placement live in exactly one place. */
 }
 
+void gfx_setTextInputEnabled(bool enabled) {
+    if (enabled) SDL_StartTextInput(sdlWindow);
+    else SDL_StopTextInput(sdlWindow);
+}
+
 /* Toggle borderless-desktop fullscreen (Alt+Enter). */
 void gfx_toggleFullscreen(void) {
     bool full = (SDL_GetWindowFlags(sdlWindow) & SDL_WINDOW_FULLSCREEN) != 0;

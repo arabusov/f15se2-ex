@@ -41,7 +41,13 @@ static void (*g_quitHandler)(void) = NULL;
  * activity flips it back (see input_preferGamepad / noteGamepadActivity). */
 static bool g_lastWasGamepad = true;
 
-void input_setMode(InputMode mode) { g_mode = mode; }
+void input_setMode(InputMode mode) {
+    /* Leaving text input on during flight lets a desktop IME intercept editing
+     * keys it treats specially (Backspace fires the gun here) and intermittently
+     * swallow or delay their auto-repeat. Only the menus need composed text. */
+    if (mode != g_mode) gfx_setTextInputEnabled(mode == INPUT_MODE_MENU);
+    g_mode = mode;
+}
 InputMode input_getMode(void) { return g_mode; }
 bool input_quitRequested(void) { return g_quitRequested; }
 bool input_hasFocus(void) { return g_hasFocus; }

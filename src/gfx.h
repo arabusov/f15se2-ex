@@ -26,6 +26,11 @@ void gfx_toggleFullscreen(void);
  * a static screen that is blocked in a key-wait and produces no game frame. */
 void gfx_repaint(void);
 
+/* SDL text input (IME composition) is only needed for pilot-name entry in the
+ * menus; the input pump disables it in flight so a desktop IME can't
+ * intercept/delay editing keys it treats specially (Backspace above all). */
+void gfx_setTextInputEnabled(bool enabled);
+
 /* Title-screen hi-res. Asks SDL change resolution to 640x350 and returns whether that took. */
 bool video_setHiRes(void);
 
