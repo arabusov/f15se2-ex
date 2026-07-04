@@ -349,9 +349,9 @@ int main() {
     g_orientMatrix[8] = kAttitudeNarrowComponent;
     computeAttitudeAngles();
     require(static_cast<uint16>(g_ourHead) == static_cast<uint16>(-valueToAngle(std::abs(static_cast<int>(
-                expectedSignedRatio16(-kAttitudeNarrowComponent, kQ15Identity))))) &&
+                static_cast<int16>(expectedSignedRatio16(-kAttitudeNarrowComponent, kQ15Identity)))))) &&
                 static_cast<uint16>(g_ourRoll) == static_cast<uint16>(0x10000 - valueToAngle(std::abs(static_cast<int>(
-                expectedSignedRatio16(-kAttitudeNarrowComponent, kQ15Identity))))),
+                static_cast<int16>(expectedSignedRatio16(-kAttitudeNarrowComponent, kQ15Identity)))))),
             "computeAttitudeAngles preserves original negative/positive quadrant folding");
 
     std::memset(g_orientMatrix, 0, sizeof(int16) * 9);

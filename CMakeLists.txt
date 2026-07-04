@@ -272,6 +272,7 @@ endif()
 target_link_libraries(f15se2_core PUBLIC SDL3::SDL3 OpenGL::GL)
 
 add_executable(f15se2 ${SRC_DIR}/f15.c)
+set_target_properties(f15se2 PROPERTIES OUTPUT_NAME "f15se2-ex")
 target_link_libraries(f15se2 PRIVATE f15se2_core)
 
 #==============================================================================

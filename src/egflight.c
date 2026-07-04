@@ -632,10 +632,13 @@ void computeAttitudeAngles(void) {
     g_ourPitch = valueToAngle(-g_orientMatrix[5]);
     cosPitch = cosine(g_ourPitch);
     if (cosPitch != 0) {
+        /* signedRatio16 returns the DOS 16-bit word pattern; the sign lives in
+         * bit 15, so recover it as int16 before abs (a plain (int) leaves a
+         * negative ratio as a huge positive and garbles the decoded angle). */
         if (abs(g_orientMatrix[2]) < 0x5a81) {
-            g_ourHead = valueToAngle(abs((int)signedRatio16(g_orientMatrix[2], cosPitch)));
+            g_ourHead = valueToAngle(abs((int16)signedRatio16(g_orientMatrix[2], cosPitch)));
         } else {
-            g_ourHead = complementAngle(abs((int)signedRatio16(g_orientMatrix[8], cosPitch)));
+            g_ourHead = complementAngle(abs((int16)signedRatio16(g_orientMatrix[8], cosPitch)));
         }
         if (g_orientMatrix[2] <= 0 && g_orientMatrix[8] < 0) {
             (*((char *)&g_ourHead + 1)) += 0x80;
@@ -647,9 +650,9 @@ void computeAttitudeAngles(void) {
             g_ourHead = -g_ourHead;
         }
         if (abs(g_orientMatrix[3]) < 0x5a81) {
-            g_ourRoll = valueToAngle(abs((int)signedRatio16(g_orientMatrix[3], cosPitch)));
+            g_ourRoll = valueToAngle(abs((int16)signedRatio16(g_orientMatrix[3], cosPitch)));
         } else {
-            g_ourRoll = complementAngle(abs((int)signedRatio16(g_orientMatrix[4], cosPitch)));
+            g_ourRoll = complementAngle(abs((int16)signedRatio16(g_orientMatrix[4], cosPitch)));
         }
         if (g_orientMatrix[3] <= 0 && g_orientMatrix[4] < 0) {
             *((char *)&g_ourRoll + 1) += 0x80;
