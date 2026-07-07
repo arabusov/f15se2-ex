@@ -75,7 +75,7 @@ enum GeometryOriginalConstant : int {
     kCompatWeaponType = 4,
     kCompatTargetCategory = 7,
     kDynamicShapeFlag = 0x100,
-    kShapeOffsetTableSlot = 0x7F,
+    kShapeOffsetTableSlot = 50,
     kAircraftModelSlotOffset = 0x92,
     kDynamicShapeSlotOffset = 0xC3,
     kShapeOffsetTableEntries = 100,
