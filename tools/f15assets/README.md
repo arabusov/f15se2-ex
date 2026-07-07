@@ -1,6 +1,8 @@
 # F-15 SE II Asset Tools
 
 Developer and customizer tools for converting original F-15 Strike Eagle II assets into modern, editable files.
+The overlapping MicroProse formats used by F-117A are partially supported too,
+including external `.PAL` palettes for `PIC` images.
 
 These tools are forward-conversion first. They are meant to make original game assets inspectable, editable, and eventually loadable by a modernized game runtime when replacement assets are present. They do not currently promise full backward conversion into original binary formats.
 
@@ -41,6 +43,12 @@ This produces:
 Use a different source path if your original DOS game files are not in
 `/home/xor/games/f15`.
 
+For F-117A CD assets, use the F-117A game folder as the source:
+
+```bash
+python3 -m tools.f15assets.cli convert-tree /home/xor/games/F117A/F117.CD converted_f117_assets
+```
+
 Optional flags:
 
 - Add global `--pretty` before `convert-all` for pretty-printed JSON.
@@ -76,6 +84,7 @@ python3 -m tools.f15assets.cli --pretty export-sounds /home/xor/games/f15 conver
 | Original | Modern output | Notes |
 | --- | --- | --- |
 | `*.PIC`, `*.SPR` | indexed PNG + JSON/YAML sidecar | PNG keeps palette-based pixels; sidecar keeps original decode metadata and source bytes. |
+| F-117A `*.PIC` + `*.PAL` | indexed PNG + JSON/YAML sidecar | Same-stem `.PAL` is used first; known aliases handle files such as `256LEFT.PIC` using `FLIGHT.PAL` and `CLIMBIN.PIC` using `ADV.PAL`; otherwise `PALETTES.PAL` chunk 0 is used as an F-117A fallback. |
 | `TITLE640.PIC` | `640x350` PNG + sidecar | Stored as alternating left/right rows by the original 640-mode loader. |
 | `1.PIC`..`4.PIC` | VGA-style PNG + sidecar | Demo-only images use a different byte-indexed loader path. |
 | `*.3D3` | `.glb` + JSON/YAML sidecar | Blender-friendly model export. JSON keeps shape ids, offsets, raw chunks, and metadata. |

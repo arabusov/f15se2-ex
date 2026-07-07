@@ -21,7 +21,7 @@ try:
         export_sounds,
     )
     from tools.f15assets.f15assets.pic import to_png_data
-    from tools.f15assets.f15assets.io import from_base64
+    from tools.f15assets.f15assets.io import from_base64, to_base64
 except ModuleNotFoundError:
     from f15assets import (
         decode_pic_asset,
@@ -36,7 +36,7 @@ except ModuleNotFoundError:
         export_sounds,
     )
     from f15assets.pic import to_png_data
-    from f15assets.io import from_base64
+    from f15assets.io import from_base64, to_base64
 
 ASSET_EXT_FORMATS = {
     ".pic": "PIC",
@@ -50,6 +50,14 @@ ASSET_EXT_FORMATS = {
 THEATER_WLD_STEM_ALIASES = {
     "LB": "LIBYA",
     "PG": "GULF",
+}
+
+F117_PIC_PALETTE_ALIASES = {
+    "256LEFT": "FLIGHT.PAL",
+    "256PIT": "FLIGHT.PAL",
+    "256REAR": "FLIGHT.PAL",
+    "256RIGHT": "FLIGHT.PAL",
+    "CLIMBIN": "ADV.PAL",
 }
 
 
@@ -125,6 +133,67 @@ def _detect_format(path: Path) -> str:
     return ASSET_EXT_FORMATS.get(path.suffix.lower(), "")
 
 
+def _dac6_to_rgb8(data: bytes) -> bytes:
+    return bytes(((value & 0x3F) << 2) | ((value & 0x3F) >> 4) for value in data[:768])
+
+
+def _find_external_palette(source_path: Path) -> tuple[Path, bytes, str] | None:
+    same_stem = source_path.with_suffix(".PAL")
+    if same_stem.exists() and same_stem.stat().st_size >= 768:
+        return same_stem, same_stem.read_bytes()[:768], "same_stem_pal"
+
+    lower_stem = source_path.with_suffix(".pal")
+    if lower_stem.exists() and lower_stem.stat().st_size >= 768:
+        return lower_stem, lower_stem.read_bytes()[:768], "same_stem_pal"
+
+    alias_name = F117_PIC_PALETTE_ALIASES.get(source_path.stem.upper())
+    if alias_name:
+        alias_path = source_path.with_name(alias_name)
+        if alias_path.exists() and alias_path.stat().st_size >= 768:
+            return alias_path, alias_path.read_bytes()[:768], "f117_known_pic_palette_alias"
+        alias_path = source_path.with_name(alias_name.lower())
+        if alias_path.exists() and alias_path.stat().st_size >= 768:
+            return alias_path, alias_path.read_bytes()[:768], "f117_known_pic_palette_alias"
+
+    palette_table = source_path.with_name("PALETTES.PAL")
+    if palette_table.exists() and palette_table.stat().st_size >= 768:
+        return palette_table, palette_table.read_bytes()[:768], "f117_palettes_pal_chunk0"
+
+    palette_table = source_path.with_name("palettes.pal")
+    if palette_table.exists() and palette_table.stat().st_size >= 768:
+        return palette_table, palette_table.read_bytes()[:768], "f117_palettes_pal_chunk0"
+
+    return None
+
+
+def _attach_external_palette(payload: Dict[str, Any], source_path: Path | None) -> None:
+    if source_path is None:
+        return
+    profile = payload.get("palette_profile")
+    if isinstance(profile, dict) and profile.get("status") == "embedded":
+        return
+
+    found = _find_external_palette(source_path)
+    if found is None:
+        return
+
+    palette_path, palette_dac6, source = found
+    payload["palette_dac6_base64"] = to_base64(palette_dac6)
+    payload["palette_rgb8_base64"] = to_base64(_dac6_to_rgb8(palette_dac6))
+    payload["palette_profile"] = {
+        "source": source,
+        "source_file": str(palette_path),
+        "status": "external",
+        "index_mode": "indexed",
+        "index_bit_depth": payload.get("palette_profile", {}).get("index_bit_depth", 8)
+        if isinstance(payload.get("palette_profile"), dict)
+        else 8,
+        "color_mode": "palette_index",
+        "palette_format": "vga_dac_6bit_rgb_triples",
+        "notes": "External 768-byte VGA DAC palette applied during PNG export.",
+    }
+
+
 def _decode_asset(
     data: bytes,
     fmt: str,
@@ -147,6 +216,7 @@ def _decode_asset(
             payload = decode_pic_asset(
                 data, source_name=source_path.name if source_path is not None else None
             )
+        _attach_external_palette(payload, source_path)
         if args.png:
             pixels = from_base64(payload["pixels_base64"])
             index_bit_depth = 8
