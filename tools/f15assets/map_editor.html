@@ -75,10 +75,14 @@
 
     main {
       display: grid;
-      grid-template-columns: minmax(320px, 1fr) 360px;
+      grid-template-columns: 360px minmax(320px, 1fr) 320px;
       gap: 16px;
       padding: 16px;
     }
+
+    .map-wrap { grid-column: 2; }
+    .details-panel { grid-column: 1; grid-row: 1; }
+    .list-panel { grid-column: 3; grid-row: 1; }
 
     .map-wrap, aside {
       background: rgba(29, 36, 25, 0.86);
@@ -193,6 +197,7 @@
 
     @media (max-width: 900px) {
       main { grid-template-columns: 1fr; }
+      .map-wrap, aside { grid-column: auto; grid-row: auto; }
       #map { height: 72vh; min-height: 420px; }
       aside { max-height: none; }
     }
@@ -224,13 +229,20 @@
       <div class="map-attribution" id="map-attribution" hidden>© OpenStreetMap contributors © CARTO</div>
     </section>
 
-    <aside>
+    <aside class="details-panel">
       <div class="side-head">
         <strong>Selected object</strong>
         <span class="stat" id="dirty">clean</span>
       </div>
       <div class="details" id="details">
         <div class="hint">Select a marker on the map or in the list.</div>
+      </div>
+    </aside>
+
+    <aside class="list-panel">
+      <div class="side-head">
+        <strong>Objects</strong>
+        <span class="stat">click to select</span>
       </div>
       <div class="list" id="object-list"></div>
     </aside>
