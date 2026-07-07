@@ -336,12 +336,66 @@ def cmd_export_sounds(args: argparse.Namespace) -> int:
     return 0
 
 
+def _repo_root_from_tool() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def cmd_convert_all(args: argparse.Namespace) -> int:
+    input_root = Path(args.input)
+    output_root = Path(args.output)
+    if not input_root.exists() or not input_root.is_dir():
+        raise ValueError(f"input must be an existing directory: {args.input}")
+
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    convert_args = argparse.Namespace(
+        input=str(input_root),
+        output=str(output_root),
+        recursive=False,
+        models="glb",
+        no_png=False,
+        yaml=False,
+        continue_on_error=False,
+        pretty=args.pretty,
+    )
+    result = cmd_convert_tree(convert_args)
+    if result != 0:
+        return result
+
+    repo_root = _repo_root_from_tool()
+    font_args = argparse.Namespace(
+        repo_root=str(repo_root),
+        output=str(output_root / "fonts"),
+        no_bdf=False,
+        pretty=args.pretty,
+    )
+    result = cmd_export_fonts(font_args)
+    if result != 0:
+        return result
+
+    sound_args = argparse.Namespace(
+        input=str(input_root),
+        output=str(output_root / "sounds"),
+        sample_rate=7850,
+        pretty=args.pretty,
+    )
+    return cmd_export_sounds(sound_args)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="F-15 asset converter (forward-only: game binary -> modern editable outputs)"
     )
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    convert_all = sub.add_parser(
+        "convert-all",
+        help="convert game assets, in-repo fonts, and digitized sounds with default settings",
+    )
+    convert_all.add_argument("input", help="Installed game folder containing original assets")
+    convert_all.add_argument("output", help="Output folder for all converted assets")
+    convert_all.set_defaults(func=cmd_convert_all)
 
     decode = sub.add_parser(
         "decode",

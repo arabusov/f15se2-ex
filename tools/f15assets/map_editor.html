@@ -235,8 +235,10 @@
     let fileName = "world.WLD.json";
     let selected = -1;
     let dragging = false;
+    let dragCandidate = null;
     let showGrid = true;
     let dirty = false;
+    const DRAG_START_PX = 6;
     const ICON_GLYPHS = {
       target: ["..#..", ".###.", "#####", ".###.", "..#.."],
       base: ["#...#", ".#.#.", "..#..", ".#.#.", "#...#"],
@@ -565,17 +567,27 @@
     canvas.addEventListener("pointerdown", event => {
       if (!world) return;
       const rect = canvas.getBoundingClientRect();
-      const idx = pickObject(event.clientX - rect.left, event.clientY - rect.top);
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const idx = pickObject(x, y);
       if (idx >= 0) {
         selectObject(idx);
-        dragging = true;
+        dragging = false;
+        dragCandidate = { pointerId: event.pointerId, x, y, idx };
         canvas.setPointerCapture(event.pointerId);
       }
     });
     canvas.addEventListener("pointermove", event => {
-      if (!dragging || selected < 0) return;
+      if ((!dragCandidate && !dragging) || selected < 0) return;
       const rect = canvas.getBoundingClientRect();
-      const p = screenToWorld(event.clientX - rect.left, event.clientY - rect.top);
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      if (!dragging) {
+        if (!dragCandidate || event.pointerId !== dragCandidate.pointerId) return;
+        if (Math.hypot(x - dragCandidate.x, y - dragCandidate.y) < DRAG_START_PX) return;
+        dragging = true;
+      }
+      const p = screenToWorld(x, y);
       objects()[selected].x_coord = p.x;
       objects()[selected].y_coord = p.y;
       markDirty();
@@ -585,6 +597,11 @@
     canvas.addEventListener("pointerup", () => {
       if (dragging) renderList();
       dragging = false;
+      dragCandidate = null;
+    });
+    canvas.addEventListener("pointercancel", () => {
+      dragging = false;
+      dragCandidate = null;
     });
     document.getElementById("toggle-grid").addEventListener("click", event => {
       showGrid = !showGrid;

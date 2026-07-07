@@ -22,6 +22,31 @@ Run commands from the repository root that contains this `tools` directory.
 
 ## Commands
 
+## Convert all game assets
+
+From the `f15se2-ex` repository root, run:
+
+```bash
+python3 -m tools.f15assets.cli convert-all /home/xor/games/f15 converted_assets_all
+```
+
+This produces:
+
+- `*.png` for all supported `PIC`/`SPR` image assets.
+- `*.json` sidecars for decoded assets.
+- `*.3D3.glb` model files for Blender and other glTF tools.
+- `fonts/font_<id>.bdf`, `fonts/font_<id>.png`, and `fonts/font_<id>.json`.
+- `sounds/f15dgtl_raw.wav`, driver-backed `sounds/voice_cue_*.wav`, and sound metadata JSON.
+
+Use a different source path if your original DOS game files are not in
+`/home/xor/games/f15`.
+
+Optional flags:
+
+- Add global `--pretty` before `convert-all` for pretty-printed JSON.
+- Use `convert-tree` directly if you need YAML sidecars, recursive input, or non-default model output.
+- Use `export-sounds` directly if you need a non-default sample rate.
+
 Convert a whole asset tree:
 
 ```bash
