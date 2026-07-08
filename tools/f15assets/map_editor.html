@@ -1,0 +1,1339 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>F-15 World Map Editor</title>
+  <style>
+    :root {
+      --bg: #11140f;
+      --panel: #1d2419;
+      --panel-2: #26301f;
+      --ink: #ece7d5;
+      --muted: #aeb89a;
+      --line: #4f5c3d;
+      --accent: #d7a84f;
+      --danger: #e56b4f;
+      --water: #23354a;
+      --land: #2f4424;
+      --blocked: #5a392a;
+      --target: #f2c15b;
+      --base: #7fd18b;
+      --sam: #f26d5b;
+      --ship: #6db8f2;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 20% 10%, rgba(215, 168, 79, 0.16), transparent 32rem),
+        linear-gradient(135deg, #0b0f0a 0%, var(--bg) 48%, #18150f 100%);
+      font-family: "Aptos Display", "Segoe UI", sans-serif;
+    }
+
+    header {
+      padding: 18px 22px 12px;
+      border-bottom: 1px solid rgba(236, 231, 213, 0.12);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button, label.file {
+      border: 1px solid rgba(236, 231, 213, 0.22);
+      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-decoration: none;
+    }
+
+    button:hover, label.file:hover, a.button:hover { border-color: var(--accent); }
+    input[type="file"] { display: none; }
+
+    main {
+      display: grid;
+      grid-template-columns: 360px minmax(320px, 1fr) 320px;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    .map-wrap { grid-column: 2; }
+    .details-panel { grid-column: 1; grid-row: 1; }
+    .list-panel { grid-column: 3; grid-row: 1; }
+
+    .map-wrap, aside {
+      background: rgba(29, 36, 25, 0.86);
+      border: 1px solid rgba(236, 231, 213, 0.12);
+      border-radius: 18px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+
+    .map-head, .side-head {
+      padding: 12px 14px;
+      background: rgba(38, 48, 31, 0.88);
+      border-bottom: 1px solid rgba(236, 231, 213, 0.12);
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .map-wrap { position: relative; }
+
+    .map-attribution {
+      position: absolute;
+      left: 12px;
+      bottom: 10px;
+      padding: 4px 7px;
+      border-radius: 8px;
+      background: rgba(17, 20, 15, 0.78);
+      color: rgba(236, 231, 213, 0.82);
+      font-size: 11px;
+      pointer-events: none;
+    }
+
+    .hint, .stat {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .server-warning {
+      margin: 12px 16px 0;
+      padding: 10px 12px;
+      border: 1px solid rgba(229, 107, 79, 0.45);
+      border-radius: 12px;
+      background: rgba(90, 57, 42, 0.55);
+      color: #f4d7bd;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .server-warning code {
+      color: #fff4d6;
+    }
+
+    .geo {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      text-align: right;
+    }
+
+    #map {
+      width: 100%;
+      height: min(78vh, calc(100vw - 420px));
+      min-height: 560px;
+      display: block;
+      background: #172015;
+      touch-action: none;
+    }
+
+    aside {
+      max-height: calc(100vh - 110px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .details {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      overflow: auto;
+    }
+
+    .model-preview {
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+      padding: 10px;
+      border: 1px solid rgba(236, 231, 213, 0.14);
+      border-radius: 12px;
+      background: rgba(17, 23, 15, 0.72);
+    }
+
+    .model-preview canvas, .model-preview img {
+      width: 240px;
+      height: 240px;
+      object-fit: contain;
+      image-rendering: auto;
+    }
+
+    .model-preview .caption {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .model-controls {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .model-controls button {
+      padding: 5px 8px;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .row label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid rgba(236, 231, 213, 0.16);
+      background: #11170f;
+      color: var(--ink);
+      border-radius: 9px;
+      padding: 8px;
+    }
+
+    .list {
+      overflow: auto;
+      border-top: 1px solid rgba(236, 231, 213, 0.12);
+      padding: 8px;
+    }
+
+    .item {
+      padding: 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: grid;
+      gap: 2px;
+    }
+
+    .item:hover, .item.active { background: rgba(215, 168, 79, 0.14); }
+    .item small { color: var(--muted); }
+    .chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      border: 1px solid rgba(236, 231, 213, 0.18);
+      background: rgba(17, 23, 15, 0.82);
+      border-radius: 999px;
+      padding: 4px 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      .map-wrap, aside { grid-column: auto; grid-row: auto; }
+      #map { height: 72vh; min-height: 420px; }
+      aside { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>F-15 World Map Editor</h1>
+      <div class="hint">Load exported <code>*.WLD.json</code>, drag objects, edit fields, export JSON.</div>
+    </div>
+    <div class="toolbar">
+      <label class="file">Load WLD JSON<input id="file" type="file" accept=".wld.json"></label>
+      <button id="toggle-osm">Background off</button>
+      <button id="toggle-grid">Grid on</button>
+      <button id="toggle-glb">Object labels off</button>
+      <a class="button" href="model_viewer.html">3D model viewer</a>
+      <button id="duplicate">Duplicate</button>
+      <button id="delete">Delete</button>
+      <button id="download">Export JSON</button>
+    </div>
+  </header>
+
+  <div class="server-warning" id="server-warning" hidden>
+    3D model auto-loading is disabled from <code>file://</code> pages because browsers block local file fetches.
+    From the repository root, run <code>python3 -m http.server 8000</code>,
+    then open <code>http://localhost:8000/tools/f15assets/map_editor.html</code>.
+  </div>
+
+  <main>
+    <section class="map-wrap">
+      <div class="map-head">
+        <div id="title">No world loaded</div>
+        <div>
+          <div class="stat" id="stats">0 objects</div>
+          <div class="geo" id="geo"></div>
+        </div>
+      </div>
+      <canvas id="map" width="900" height="900"></canvas>
+      <div class="map-attribution" id="map-attribution" hidden></div>
+    </section>
+
+    <aside class="details-panel">
+      <div class="side-head">
+        <strong>Selected object</strong>
+        <span class="stat" id="dirty">clean</span>
+      </div>
+      <div class="details" id="details">
+        <div class="hint">Select a marker on the map or in the list.</div>
+      </div>
+    </aside>
+
+    <aside class="list-panel">
+      <div class="side-head">
+        <strong>Objects</strong>
+        <span class="stat">click to select</span>
+      </div>
+      <div class="list" id="object-list"></div>
+    </aside>
+  </main>
+
+  <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    import * as THREE_MODULE from "three";
+    import { GLTFLoader } from "https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+    window.F15_THREE = { THREE: THREE_MODULE, GLTFLoader };
+    window.dispatchEvent(new Event("f15-three-ready"));
+  </script>
+  <script>
+    const WORLD_MAX = 32768;
+    const GRID_CELLS = 16;
+    const canvas = document.getElementById("map");
+    const ctx = canvas.getContext("2d");
+    const fileInput = document.getElementById("file");
+    const titleEl = document.getElementById("title");
+    const statsEl = document.getElementById("stats");
+    const geoEl = document.getElementById("geo");
+    const detailsEl = document.getElementById("details");
+    const listEl = document.getElementById("object-list");
+    const dirtyEl = document.getElementById("dirty");
+    const osmButton = document.getElementById("toggle-osm");
+    const attributionEl = document.getElementById("map-attribution");
+    const serverWarningEl = document.getElementById("server-warning");
+    let world = null;
+    let fileName = "world.WLD.json";
+    let selected = -1;
+    let dragging = false;
+    let dragCandidate = null;
+    let showGrid = true;
+    let objectOverlayMode = "off";
+    let showOsm = false;
+    let backgroundMode = "off";
+    let dirty = false;
+    const DRAG_START_PX = 6;
+    const OSM_TILE_SIZE = 256;
+    const OSM_TILE_ZOOM = 6;
+    const MAP_TILE_LAYERS = {
+      osm: {
+        label: "OSM topo",
+        attribution: "© OpenStreetMap contributors © OpenTopoMap",
+        url: "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
+      },
+      nolabel: {
+        label: "Topo no labels",
+        attribution: "Sources: Esri, USGS, NOAA",
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}",
+      },
+    };
+    const osmTiles = new Map();
+    const gameBackdropImages = new Map();
+    let glbObjectNames = [];
+    let glbObjectNameByIndex = new Map();
+    let glbSceneByIndex = new Map();
+    let glbThumbByIndex = new Map();
+    let glbFileName = "";
+    let autoGlbTried = false;
+    let pendingGlbFile = null;
+    let selectedPreviewRenderer = null;
+    let previewZoom = 1.5;
+    let previewRotation = 0;
+    const OSM_GEOREFS = {
+      // Affine transforms from Web Mercator tile pixels at zoom 6 to WLD world
+      // coordinates. These are calibrated from named WLD objects against their
+      // real OSM positions, so OSM mode follows the same game-map placement as
+      // the cropped original PNG instead of using rough theater rectangles.
+      CE: { label: "Central Europe", t: { xx: 46.5901502, xy: 8.21176476, x0: -441929.809, yx: -2.73697415, yy: 38.4664406, y0: -166837.873 } },
+      LB: { label: "Libya", t: { xx: 57.0822995, xy: 0.471934471, x0: -500121.856, yx: 1.15314398, yy: 52.2583981, y0: -341038.931 } },
+      LIBYA: { label: "Libya", t: { xx: 57.0822995, xy: 0.471934471, x0: -500121.856, yx: 1.15314398, yy: 52.2583981, y0: -341038.931 } },
+      PG: { label: "Persian Gulf", t: { xx: 58.658527, xy: 6.5840118, x0: -648162.022, yx: -4.69869963, yy: 67.0544273, y0: -393265.79 } },
+      GULF: { label: "Persian Gulf", t: { xx: 58.658527, xy: 6.5840118, x0: -648162.022, yx: -4.69869963, yy: 67.0544273, y0: -393265.79 } },
+      NC: { label: "North Cape", t: { xx: 28.7141712, xy: -2.03884649, x0: -251855.929, yx: 0.273455292, yy: 31.1719053, y0: -106676.876 } },
+      VN: { label: "Vietnam", t: { xx: 41.1144272, xy: -42.6172157, x0: -200320.7, yx: 47.2476764, yy: 43.2960353, y0: -922104.446 } },
+      ME: { label: "Middle East", t: { xx: 36.1224386, xy: 54.2828602, x0: -699396.218, yx: -47.5308066, yy: 33.4667487, y0: 269941.475 } },
+      JP: { label: "Iraq / Desert Storm", t: { xx: 38.7844302, xy: 27.6607169, x0: -568556.48, yx: -24.5200657, yy: 47.7136059, y0: -54432.312 } },
+      // These theaters are not present in the current converted sample set, so
+      // keep north-up approximate transforms until their PNG/WLD pairs are
+      // available for calibration.
+      KO: { label: "Korea", t: northUpTransform(124, 132, 33, 43) },
+      CU: { label: "Cuba", t: northUpTransform(-86, -73, 18, 24) },
+      KU: { label: "Kuwait", t: northUpTransform(43, 50, 27, 32) },
+    };
+    const GAME_BACKDROPS = {
+      CE: "CEUROPE.png",
+      LB: "LIBYA.png",
+      LIBYA: "LIBYA.png",
+      PG: "PERSIAN.png",
+      GULF: "PERSIAN.png",
+      NC: "NCAPE.png",
+      VN: "VN.png",
+      ME: "ME.png",
+      JP: "JP.png",
+      KO: "KOREA.png",
+      CU: "CUBA.png",
+      KU: "KUWAIT.png",
+    };
+    const GAME_BACKDROP_CROP = { x: 0, y: 0, w: 224, h: 168 };
+    const ICON_GLYPHS = {
+      target: ["..#..", ".###.", "#####", ".###.", "..#.."],
+      base: ["#...#", ".#.#.", "..#..", ".#.#.", "#...#"],
+      sam: ["..#..", ".#.#.", "#####", "#.#.#", "..#.."],
+      ship: [".....", "..#..", ".###.", "#####", ".#.#."],
+    };
+
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function objects() { return world?.world_objects || []; }
+    function flights() { return world?.flight_units || []; }
+    function names() { return world?.name_strings || []; }
+    function objectTypeTable() {
+      if (!world?.mission_object_type_table) return null;
+      try {
+        return Uint8Array.from(atob(world.mission_object_type_table), c => c.charCodeAt(0));
+      } catch (_) {
+        return null;
+      }
+    }
+    function terrainGrid() {
+      if (!world?.terrain_grid) return null;
+      try {
+        return Uint8Array.from(atob(world.terrain_grid), c => c.charCodeAt(0));
+      } catch (_) {
+        return null;
+      }
+    }
+    function objectName(obj) {
+      const idx = (Number(obj.objectIdx || 0) & 0x7f);
+      const unit = Number(obj.unitRef || 0);
+      const n = names();
+      const objName = n[idx] || `object_${idx}`;
+      const unitName = n[unit] || "";
+      return unitName ? `${objName} at ${unitName}` : objName;
+    }
+    function modelNameFor(obj) { return glbObjectNameByIndex.get(Number(obj.objectIdx || 0) & 0x7f) || ""; }
+    function objectKind(obj) {
+      const name = objectName(obj).toLowerCase();
+      const flags = Number(obj.targetFlags || 0);
+      if (name.includes("sam") || name.includes("radar")) return "sam";
+      if ((flags & 0x500) || name.includes("airbase") || name.includes("airstrip")) return "base";
+      if (name.includes("uss") || name.includes("boat") || name.includes("ship")) return "ship";
+      return "target";
+    }
+    function colorFor(obj) {
+      return {
+        sam: getCss("--sam"),
+        base: getCss("--base"),
+        ship: getCss("--ship"),
+        target: getCss("--target"),
+      }[objectKind(obj)];
+    }
+    function objectTypeValue(obj) {
+      const table = objectTypeTable();
+      if (!table) return 0;
+      return table[Number(obj.objectIdx || 0) & 0x7f] || 0;
+    }
+    function flagLabels(obj) {
+      const f = Number(obj.targetFlags || 0);
+      const labels = [];
+      if (f & 0x001) labels.push("mission/placeable");
+      if (f & 0x008) labels.push("random removable");
+      if (f & 0x080) labels.push("destroyed/inactive");
+      if (f & 0x100) labels.push("airbase");
+      if (f & 0x200) labels.push("large/runway");
+      if (f & 0x400) labels.push("waypoint/no intercept");
+      if (f & 0x800) labels.push("disabled");
+      if (f & 0x1000) labels.push("enemy-counted");
+      return labels;
+    }
+    function roleFor(obj, idx) {
+      const f = Number(obj.targetFlags || 0);
+      if ((f & 0x800) !== 0) return "disabled";
+      if (idx >= Number(world?.world_object_count || 0) && (f & 0x500) && (f & 0x201)) return "takeoff/landing base candidate";
+      if (objectTypeValue(obj) !== 0) return "primary/secondary target candidate";
+      if (idx < Number(world?.ground_unit_count || 0) && Number(obj.unitType || 0) !== 0) return "ground unit";
+      if ((f & 0x400) !== 0) return "waypoint/reference point";
+      return "map object";
+    }
+    function flightsForObject(idx) {
+      return flights()
+        .map((unit, unitIdx) => ({ unit, unitIdx }))
+        .filter(entry => Number(entry.unit.waypointIdx || -1) === idx);
+    }
+    function hex(v) {
+      const n = Number(v || 0);
+      return "0x" + (n < 0 ? (n >>> 0).toString(16) : n.toString(16));
+    }
+    function updateStats() {
+      const baseCount = objects().filter((obj, idx) => roleFor(obj, idx).includes("base candidate")).length;
+      const targetCount = objects().filter((obj, idx) => roleFor(obj, idx).includes("target candidate")).length;
+      statsEl.textContent = `${objects().length} objects, ${flights().length} flights, ${targetCount} target candidates, ${baseCount} bases`;
+    }
+    function theaterKey() {
+      const raw = fileName.replace(/\..*$/, "").toUpperCase();
+      if (OSM_GEOREFS[raw]) return raw;
+      if (raw.includes("LIBYA")) return "LIBYA";
+      if (raw.includes("GULF")) return "GULF";
+      return raw.slice(0, 2);
+    }
+    function theaterBounds() {
+      return OSM_GEOREFS[theaterKey()] || null;
+    }
+    function gameBackdropName() {
+      return GAME_BACKDROPS[theaterKey()] || null;
+    }
+    function gameBackdropCandidates(name) {
+      return [
+        `../../converted_assets_all/${name}`,
+        `./${name}`,
+      ];
+    }
+    function glbCandidates() {
+      const raw = fileName.replace(/\.wld\.json$/i, "");
+      const base = raw.replace(/\..*$/, "");
+      const modelBase = {
+        LIBYA: "LB",
+        GULF: "PG",
+      }[theaterKey()] || theaterKey() || base;
+      const names = [...new Set([
+        `${modelBase}.3D3.glb`,
+        `${base}.3D3.glb`,
+        `${modelBase}.glb`,
+        `${base}.glb`,
+        `${modelBase}.WLD.glb`,
+        `${base}.WLD.glb`,
+      ])];
+      const dirs = [
+        "../../converted_assets_all",
+        "/converted_assets_all",
+        ".",
+      ];
+      const out = [];
+      dirs.forEach(dir => names.forEach(name => out.push(`${dir}/${name}`)));
+      return out;
+    }
+    function lonToTilePixelX(lon, zoom) {
+      return ((lon + 180) / 360) * 2 ** zoom * OSM_TILE_SIZE;
+    }
+    function latToTilePixelY(lat, zoom) {
+      const rad = lat * Math.PI / 180;
+      return (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * 2 ** zoom * OSM_TILE_SIZE;
+    }
+    function tilePixelToLon(x, zoom) {
+      return x / (2 ** zoom * OSM_TILE_SIZE) * 360 - 180;
+    }
+    function tilePixelToLat(y, zoom) {
+      const n = Math.PI * (1 - 2 * y / (2 ** zoom * OSM_TILE_SIZE));
+      return Math.atan(Math.sinh(n)) * 180 / Math.PI;
+    }
+    function northUpTransform(west, east, south, north) {
+      const westPx = lonToTilePixelX(west, OSM_TILE_ZOOM);
+      const eastPx = lonToTilePixelX(east, OSM_TILE_ZOOM);
+      const northPx = latToTilePixelY(north, OSM_TILE_ZOOM);
+      const southPx = latToTilePixelY(south, OSM_TILE_ZOOM);
+      return {
+        xx: WORLD_MAX / (eastPx - westPx),
+        xy: 0,
+        x0: -westPx * WORLD_MAX / (eastPx - westPx),
+        yx: 0,
+        yy: WORLD_MAX / (southPx - northPx),
+        y0: -northPx * WORLD_MAX / (southPx - northPx),
+      };
+    }
+    function worldToMercatorPixel(georef, wx, wy) {
+      const t = georef.t;
+      const det = t.xx * t.yy - t.xy * t.yx;
+      if (Math.abs(det) < 0.000001) return null;
+      const dx = wx - t.x0;
+      const dy = wy - t.y0;
+      return {
+        x: (t.yy * dx - t.xy * dy) / det,
+        y: (-t.yx * dx + t.xx * dy) / det,
+      };
+    }
+    function worldToLonLat(georef, wx, wy) {
+      const p = worldToMercatorPixel(georef, wx, wy);
+      if (!p) return null;
+      return {
+        lon: tilePixelToLon(p.x, OSM_TILE_ZOOM),
+        lat: tilePixelToLat(p.y, OSM_TILE_ZOOM),
+      };
+    }
+    function updateGeoInfo() {
+      const georef = theaterBounds();
+      if (!georef) {
+        geoEl.textContent = "";
+        return;
+      }
+      const corners = [
+        worldToLonLat(georef, 0, 0),
+        worldToLonLat(georef, WORLD_MAX, 0),
+        worldToLonLat(georef, 0, WORLD_MAX),
+        worldToLonLat(georef, WORLD_MAX, WORLD_MAX),
+      ].filter(Boolean);
+      if (corners.length !== 4) {
+        geoEl.textContent = "";
+        return;
+      }
+      const west = Math.min(...corners.map(p => p.lon));
+      const east = Math.max(...corners.map(p => p.lon));
+      const south = Math.min(...corners.map(p => p.lat));
+      const north = Math.max(...corners.map(p => p.lat));
+      geoEl.innerHTML = `Geo ${georef.label}: W ${west.toFixed(3)}, E ${east.toFixed(3)}, S ${south.toFixed(3)}, N ${north.toFixed(3)}<br>` +
+        `Corners TL ${corners[0].lon.toFixed(3)},${corners[0].lat.toFixed(3)} ` +
+        `TR ${corners[1].lon.toFixed(3)},${corners[1].lat.toFixed(3)} ` +
+        `BL ${corners[2].lon.toFixed(3)},${corners[2].lat.toFixed(3)} ` +
+        `BR ${corners[3].lon.toFixed(3)},${corners[3].lat.toFixed(3)}`;
+    }
+    function tileImage(layerKey, z, x, y) {
+      const layer = MAP_TILE_LAYERS[layerKey] || MAP_TILE_LAYERS.osm;
+      const key = `${layerKey}/${z}/${x}/${y}`;
+      if (osmTiles.has(key)) return osmTiles.get(key);
+      const img = new Image();
+      img.onload = () => draw();
+      img.src = layer.url
+        .replace("{z}", String(z))
+        .replace("{x}", String(x))
+        .replace("{y}", String(y));
+      osmTiles.set(key, img);
+      return img;
+    }
+    function updateOsmButton() {
+      const bounds = theaterBounds();
+      const backdrop = gameBackdropName();
+      if (backgroundMode === "game") {
+        osmButton.textContent = backdrop ? `Game ${backdrop}` : "Game unavailable";
+      } else if (MAP_TILE_LAYERS[backgroundMode]) {
+        osmButton.textContent = `${MAP_TILE_LAYERS[backgroundMode].label} ${bounds ? bounds.label : "unknown"}`;
+      } else {
+        osmButton.textContent = "Background off";
+      }
+      showOsm = Boolean(MAP_TILE_LAYERS[backgroundMode]);
+      attributionEl.hidden = !showOsm;
+      attributionEl.textContent = MAP_TILE_LAYERS[backgroundMode]?.attribution || "";
+    }
+    function gameBackdropImage(name) {
+      if (gameBackdropImages.has(name)) return gameBackdropImages.get(name);
+      const state = { img: new Image(), candidate: 0, failed: false };
+      const candidates = gameBackdropCandidates(name);
+      const loadNext = () => {
+        if (state.candidate >= candidates.length) {
+          state.failed = true;
+          draw();
+          return;
+        }
+        state.img.src = candidates[state.candidate++];
+      };
+      state.img.onload = () => draw();
+      state.img.onerror = loadNext;
+      loadNext();
+      gameBackdropImages.set(name, state);
+      return state;
+    }
+    function drawGameBackdrop(r) {
+      if (backgroundMode !== "game") return;
+      const name = gameBackdropName();
+      if (!name) return;
+      const state = gameBackdropImage(name);
+      const img = state.img;
+      if (state.failed || !img.complete || img.naturalWidth <= 0) return;
+      const crop = GAME_BACKDROP_CROP;
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, r.x, r.y, r.w, r.h);
+      ctx.restore();
+    }
+    function drawOsm(r) {
+      if (!MAP_TILE_LAYERS[backgroundMode]) return;
+      const georef = theaterBounds();
+      if (!georef) return;
+
+      const zoom = OSM_TILE_ZOOM;
+      const maxTile = 2 ** zoom;
+      const t = georef.t;
+      const det = t.xx * t.yy - t.xy * t.yx;
+      if (Math.abs(det) < 0.000001) return;
+      const corners = [
+        worldToMercatorPixel(georef, 0, 0),
+        worldToMercatorPixel(georef, WORLD_MAX, 0),
+        worldToMercatorPixel(georef, 0, WORLD_MAX),
+        worldToMercatorPixel(georef, WORLD_MAX, WORLD_MAX),
+      ];
+      const minX = Math.min(...corners.map(p => p.x));
+      const maxX = Math.max(...corners.map(p => p.x));
+      const minY = Math.min(...corners.map(p => p.y));
+      const maxY = Math.max(...corners.map(p => p.y));
+      const tileMinX = Math.floor(minX / OSM_TILE_SIZE) - 1;
+      const tileMaxX = Math.floor(maxX / OSM_TILE_SIZE) + 1;
+      const tileMinY = Math.floor(minY / OSM_TILE_SIZE) - 1;
+      const tileMaxY = Math.floor(maxY / OSM_TILE_SIZE) + 1;
+      const worldScaleX = r.w / WORLD_MAX;
+      const worldScaleY = r.h / WORLD_MAX;
+      const dpr = canvas.width / canvas.clientWidth || 1;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(r.x, r.y, r.w, r.h);
+      ctx.clip();
+      ctx.globalAlpha = 0.82;
+      for (let ty = tileMinY; ty <= tileMaxY; ty++) {
+        if (ty < 0 || ty >= maxTile) continue;
+        for (let tx = tileMinX; tx <= tileMaxX; tx++) {
+          const wrappedX = ((tx % maxTile) + maxTile) % maxTile;
+          const img = tileImage(backgroundMode, zoom, wrappedX, ty);
+          if (!img.complete) continue;
+          const tilePxX = tx * OSM_TILE_SIZE;
+          const tilePxY = ty * OSM_TILE_SIZE;
+          const e = r.x + (t.xx * tilePxX + t.xy * tilePxY + t.x0) * worldScaleX;
+          const f = r.y + (t.yx * tilePxX + t.yy * tilePxY + t.y0) * worldScaleY;
+          ctx.setTransform(
+            t.xx * worldScaleX * dpr,
+            t.yx * worldScaleY * dpr,
+            t.xy * worldScaleX * dpr,
+            t.yy * worldScaleY * dpr,
+            e * dpr,
+            f * dpr
+          );
+          ctx.drawImage(img, 0, 0);
+        }
+      }
+      ctx.restore();
+    }
+    function drawGameIcon(obj, p, isSelected) {
+      const kind = objectKind(obj);
+      const glyph = ICON_GLYPHS[kind] || ICON_GLYPHS.target;
+      const scale = isSelected ? 4 : 3;
+      const w = glyph[0].length * scale;
+      const h = glyph.length * scale;
+      const x = Math.round(p.x - w / 2);
+      const y = Math.round(p.y - h / 2);
+      ctx.save();
+      const usesMapBackground = backgroundMode === "game" || MAP_TILE_LAYERS[backgroundMode];
+      const haloColor = usesMapBackground ? "rgba(0,0,0,0.68)" : "rgba(255,255,235,0.68)";
+      const edgeColor = usesMapBackground ? "rgba(0,0,0,0.78)" : "rgba(255,255,235,0.76)";
+      ctx.fillStyle = haloColor;
+      glyph.forEach((row, gy) => {
+        [...row].forEach((px, gx) => {
+          if (px !== "#") return;
+          const rx = x + gx * scale;
+          const ry = y + gy * scale;
+          ctx.fillRect(rx - 1, ry - 1, scale + 2, scale + 2);
+        });
+      });
+      ctx.fillStyle = colorFor(obj);
+      ctx.strokeStyle = edgeColor;
+      ctx.lineWidth = 1;
+      glyph.forEach((row, gy) => {
+        [...row].forEach((px, gx) => {
+          if (px !== "#") return;
+          const rx = x + gx * scale;
+          const ry = y + gy * scale;
+          ctx.fillRect(rx, ry, scale, scale);
+          ctx.strokeRect(rx + 0.5, ry + 0.5, scale - 1, scale - 1);
+        });
+      });
+      if (isSelected) {
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - 2, y - 2, w + 4, h + 4);
+      }
+      ctx.restore();
+      return true;
+    }
+    function getCss(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+    }
+    function mapRect() {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      const aspect = GAME_BACKDROP_CROP.w / GAME_BACKDROP_CROP.h;
+      let rw = w - 36;
+      let rh = rw / aspect;
+      if (rh > h - 36) {
+        rh = h - 36;
+        rw = rh * aspect;
+      }
+      return { x: (w - rw) / 2, y: (h - rh) / 2, w: rw, h: rh };
+    }
+    function worldToScreen(x, y) {
+      const r = mapRect();
+      return {
+        x: r.x + (x / WORLD_MAX) * r.w,
+        y: r.y + (y / WORLD_MAX) * r.h,
+      };
+    }
+    function screenToWorld(px, py) {
+      const r = mapRect();
+      return {
+        x: Math.round(clamp(((px - r.x) / r.w) * WORLD_MAX, 0, WORLD_MAX - 1)),
+        y: Math.round(clamp(((py - r.y) / r.h) * WORLD_MAX, 0, WORLD_MAX - 1)),
+      };
+    }
+    function draw() {
+      ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+      const r = mapRect();
+      ctx.fillStyle = "#121910";
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      drawGameBackdrop(r);
+      drawOsm(r);
+      drawTerrain(r);
+      if (showGrid) drawGrid(r);
+      drawObjects();
+    }
+    function drawTerrain(r) {
+      const grid = terrainGrid();
+      const cellW = r.w / GRID_CELLS;
+      const cellH = r.h / GRID_CELLS;
+      for (let gy = 0; gy < GRID_CELLS; gy++) {
+        for (let gx = 0; gx < GRID_CELLS; gx++) {
+          const val = grid ? grid[gx + gy * GRID_CELLS] : 0;
+          ctx.fillStyle = (val & 3) ? getCss("--water") : getCss("--land");
+          if (val & 0x10) ctx.fillStyle = getCss("--blocked");
+          ctx.globalAlpha = backgroundMode === "off" ? 0.72 : 0.28;
+          ctx.fillRect(r.x + gx * cellW, r.y + gy * cellH, cellW, cellH);
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+    function drawGrid(r) {
+      const cellW = r.w / GRID_CELLS;
+      const cellH = r.h / GRID_CELLS;
+      ctx.strokeStyle = "rgba(236,231,213,0.22)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= GRID_CELLS; i++) {
+        const p = r.x + i * cellW;
+        const q = r.y + i * cellH;
+        ctx.beginPath(); ctx.moveTo(p, r.y); ctx.lineTo(p, r.y + r.h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(r.x, q); ctx.lineTo(r.x + r.w, q); ctx.stroke();
+      }
+    }
+    function drawObjects() {
+      objects().forEach((obj, idx) => {
+        if (!obj || (!obj.x_coord && !obj.y_coord && !obj.objectIdx && !obj.unitRef)) return;
+        const p = worldToScreen(Number(obj.x_coord || 0), Number(obj.y_coord || 0));
+        if (objectOverlayMode === "labels") drawObjectLabel(obj, p, idx === selected);
+        if (drawGameIcon(obj, p, idx === selected)) return;
+        ctx.beginPath();
+        ctx.fillStyle = colorFor(obj);
+        ctx.strokeStyle = idx === selected ? "#ffffff" : "rgba(0,0,0,0.7)";
+        ctx.lineWidth = idx === selected ? 3 : 1.5;
+        ctx.arc(p.x, p.y, idx === selected ? 7 : 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+    }
+    function drawObjectLabel(obj, p, isSelected) {
+      const idx = Number(obj.objectIdx || 0) & 0x7f;
+      const label = objectName(obj);
+      const color = colorFor(obj);
+      ctx.save();
+      ctx.globalAlpha = 0.92;
+      ctx.strokeStyle = isSelected ? "#ffffff" : "rgba(0,0,0,0.82)";
+      ctx.fillStyle = "rgba(0,0,0,0.58)";
+      ctx.lineWidth = isSelected ? 2.5 : 1.5;
+      ctx.beginPath();
+      ctx.rect(p.x - 9, p.y - 9, 18, 18);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.fillRect(p.x - 4, p.y - 4, 8, 8);
+      ctx.font = "11px Aptos Display, Segoe UI, sans-serif";
+      const text = `${idx}: ${label}`;
+      const w = ctx.measureText(text).width;
+      ctx.fillStyle = "rgba(0,0,0,0.72)";
+      ctx.fillRect(p.x + 12, p.y - 10, w + 8, 16);
+      ctx.fillStyle = "#f7f0d8";
+      ctx.fillText(text, p.x + 16, p.y + 2);
+      ctx.restore();
+    }
+    function drawGlbObjectModel(obj, p, isSelected) {
+      const idx = Number(obj.objectIdx || 0) & 0x7f;
+      const thumb = glbThumbByIndex.get(idx);
+      if (!thumb) {
+        drawObjectLabel(obj, p, isSelected);
+        return;
+      }
+      const size = isSelected ? 42 : 34;
+      ctx.save();
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = "rgba(0,0,0,0.42)";
+      ctx.fillRect(p.x - size / 2 - 2, p.y - size / 2 - 2, size + 4, size + 4);
+      ctx.drawImage(thumb, p.x - size / 2, p.y - size / 2, size, size);
+      if (isSelected) {
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(p.x - size / 2 - 3, p.y - size / 2 - 3, size + 6, size + 6);
+      }
+      ctx.restore();
+    }
+    function renderSelectedModelPreview(modelIdx) {
+      const host = document.getElementById("selected-model-preview");
+      if (!host) return;
+      const THREE = window.F15_THREE?.THREE;
+      const model = glbSceneByIndex.get(modelIdx);
+      if (!THREE || !model) return;
+      if (selectedPreviewRenderer) {
+        selectedPreviewRenderer.dispose();
+        selectedPreviewRenderer = null;
+      }
+      host.innerHTML = "";
+      const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      selectedPreviewRenderer = renderer;
+      renderer.setSize(240, 240);
+      renderer.setClearColor(0x000000, 0);
+      const scene = new THREE.Scene();
+      const clone = model.clone(true);
+      scene.add(new THREE.AmbientLight(0xffffff, 1.6));
+      const key = new THREE.DirectionalLight(0xffffff, 2.4);
+      key.position.set(3, 5, 4);
+      const pivot = new THREE.Group();
+      pivot.add(clone);
+      scene.add(key, pivot);
+      const box = new THREE.Box3().setFromObject(clone);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      clone.position.sub(center);
+      pivot.rotation.x = -Math.PI / 2;
+      pivot.rotation.z = -Math.PI / 2 + previewRotation;
+      const radius = Math.max(size.x, size.y, size.z, 1);
+      const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 10000);
+      const zoom = Math.max(0.35, Math.min(3, previewZoom));
+      camera.position.set(0, 0, radius * 3.2 / zoom);
+      camera.up.set(0, 1, 0);
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+      host.appendChild(renderer.domElement);
+    }
+    function pickObject(px, py) {
+      let best = -1, bestDist = 9999;
+      objects().forEach((obj, idx) => {
+        const p = worldToScreen(Number(obj.x_coord || 0), Number(obj.y_coord || 0));
+        const d = Math.hypot(px - p.x, py - p.y);
+        if (d < 12 && d < bestDist) { best = idx; bestDist = d; }
+      });
+      return best;
+    }
+    function selectObject(idx) {
+      selected = idx;
+      renderDetails();
+      renderList();
+      draw();
+    }
+    function markDirty() {
+      dirty = true;
+      dirtyEl.textContent = "modified";
+      dirtyEl.style.color = getCss("--accent");
+    }
+    function updateField(key, value) {
+      if (selected < 0) return;
+      const obj = objects()[selected];
+      obj[key] = Number.isNaN(Number(value)) ? value : Number(value);
+      if (key === "x_coord" || key === "y_coord") {
+        obj[key] = clamp(Math.round(Number(obj[key])), 0, WORLD_MAX - 1);
+      }
+      markDirty();
+      renderDetails();
+      renderList();
+      draw();
+    }
+    function duplicateSelected() {
+      if (!world || selected < 0 || !objects()[selected]) return;
+      const copy = JSON.parse(JSON.stringify(objects()[selected]));
+      copy.x_coord = clamp(Number(copy.x_coord || 0) + 512, 0, WORLD_MAX - 1);
+      copy.y_coord = clamp(Number(copy.y_coord || 0) + 512, 0, WORLD_MAX - 1);
+      objects().push(copy);
+      world.read_item_size = objects().length;
+      selected = objects().length - 1;
+      markDirty();
+      updateStats();
+      renderDetails();
+      renderList();
+      draw();
+    }
+    function deleteSelected() {
+      if (!world || selected < 0 || !objects()[selected]) return;
+      const ok = confirm(`Delete object ${selected}: ${objectName(objects()[selected])}?`);
+      if (!ok) return;
+      objects().splice(selected, 1);
+      world.read_item_size = objects().length;
+      selected = Math.min(selected, objects().length - 1);
+      markDirty();
+      updateStats();
+      renderDetails();
+      renderList();
+      draw();
+    }
+    function renderDetails() {
+      if (!world || selected < 0 || !objects()[selected]) {
+        detailsEl.innerHTML = '<div class="hint">Select a marker on the map or in the list.</div>';
+        return;
+      }
+      const obj = objects()[selected];
+      const idx = Number(obj.objectIdx || 0) & 0x7f;
+      const flags = flagLabels(obj);
+      const linkedFlights = flightsForObject(selected);
+      const role = roleFor(obj, selected);
+      const typeValue = objectTypeValue(obj);
+      const modelIdx = Number(obj.objectIdx || 0) & 0x7f;
+      const hasModel = glbSceneByIndex.has(modelIdx);
+      const preview = `<div class="model-preview"><div id="selected-model-preview">${hasModel ? "" : `<div class="caption">No 3D model loaded for object ${modelIdx}</div>`}</div><div class="model-controls"><button data-preview="zoom-out">Zoom -</button><button data-preview="zoom-in">Zoom +</button><button data-preview="rotate-left">Rotate left</button><button data-preview="rotate-right">Rotate right</button></div><div class="caption">3D model ${modelIdx}${modelNameFor(obj) ? `: ${escapeHtml(modelNameFor(obj))}` : ""}</div></div>`;
+      detailsEl.innerHTML = `
+        ${preview}
+        <div class="row"><label>Index</label><input value="${selected}" disabled></div>
+        <div class="row"><label>Label</label><input value="${escapeHtml(objectName(obj))}" disabled></div>
+        <div class="row"><label>Role</label><input value="${escapeHtml(role)}" disabled></div>
+        <div class="row"><label>Flags</label><div class="chips">${(flags.length ? flags : ["none"]).map(v => `<span class="chip">${escapeHtml(v)}</span>`).join("")}</div></div>
+        <div class="row"><label>object type</label><input value="${typeValue} (${hex(typeValue)})" disabled></div>
+        <div class="row"><label>flights here</label><input value="${linkedFlights.length ? linkedFlights.map(v => `#${v.unitIdx} plane ${v.unit.planeType}`).join(", ") : "none"}" disabled></div>
+        <div class="row"><label>x_coord</label><input data-k="x_coord" type="number" min="0" max="32767" value="${obj.x_coord || 0}"></div>
+        <div class="row"><label>y_coord</label><input data-k="y_coord" type="number" min="0" max="32767" value="${obj.y_coord || 0}"></div>
+        <div class="row"><label>grid</label><input value="${(obj.x_coord || 0) >> 11}, ${(obj.y_coord || 0) >> 11}" disabled></div>
+        <div class="row"><label>unitRef</label><input data-k="unitRef" type="number" value="${obj.unitRef || 0}"></div>
+        <div class="row"><label>unitType</label><input data-k="unitType" type="number" value="${obj.unitType || 0}"></div>
+        <div class="row"><label>targetFlags</label><input data-k="targetFlags" type="number" value="${obj.targetFlags || 0}"></div>
+        <div class="row"><label>occupantType</label><input data-k="occupantType" type="number" value="${obj.occupantType || 0}"></div>
+        <div class="row"><label>patrolCount</label><input data-k="patrolCount" type="number" value="${obj.patrolCount || 0}"></div>
+        <div class="row"><label>objectIdx</label><input data-k="objectIdx" type="number" value="${obj.objectIdx || 0}"></div>
+        <div class="row"><label>name index</label><input value="${idx}" disabled></div>
+      `;
+      detailsEl.querySelectorAll("input[data-k]").forEach(input => {
+        input.addEventListener("change", () => updateField(input.dataset.k, input.value));
+      });
+      detailsEl.querySelectorAll("button[data-preview]").forEach(button => {
+        button.addEventListener("click", () => {
+          const action = button.dataset.preview;
+          if (action === "zoom-in") previewZoom *= 1.2;
+          if (action === "zoom-out") previewZoom /= 1.2;
+          if (action === "rotate-left") previewRotation -= Math.PI / 8;
+          if (action === "rotate-right") previewRotation += Math.PI / 8;
+          renderSelectedModelPreview(modelIdx);
+        });
+      });
+      renderSelectedModelPreview(modelIdx);
+    }
+    function renderList() {
+      listEl.innerHTML = "";
+      if (!world) return;
+      objects().forEach((obj, idx) => {
+        if (!obj || (!obj.x_coord && !obj.y_coord && !obj.objectIdx && !obj.unitRef)) return;
+        const el = document.createElement("div");
+        el.className = "item" + (idx === selected ? " active" : "");
+        el.innerHTML = `<strong>${idx}: ${escapeHtml(objectName(obj))}</strong><small>${escapeHtml(roleFor(obj, idx))}; x ${obj.x_coord || 0}, y ${obj.y_coord || 0}, flags ${obj.targetFlags || 0}</small>`;
+        el.addEventListener("click", () => selectObject(idx));
+        listEl.appendChild(el);
+      });
+    }
+    function escapeHtml(v) {
+      return String(v).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    }
+    function parseGlbObjectNames(buffer) {
+      const view = new DataView(buffer);
+      if (view.byteLength < 20 || view.getUint32(0, true) !== 0x46546c67) {
+        alert("This is not a valid binary GLB file.");
+        return [];
+      }
+      let offset = 12;
+      while (offset + 8 <= view.byteLength) {
+        const chunkLength = view.getUint32(offset, true);
+        const chunkType = view.getUint32(offset + 4, true);
+        offset += 8;
+        if (chunkType === 0x4e4f534a) {
+          const bytes = new Uint8Array(buffer, offset, chunkLength);
+          const gltf = JSON.parse(new TextDecoder("utf-8").decode(bytes));
+          const names = [];
+          (gltf.nodes || []).forEach(node => {
+            if (node?.name) names.push(String(node.name));
+          });
+          (gltf.meshes || []).forEach(mesh => {
+            if (mesh?.name) names.push(String(mesh.name));
+          });
+          return [...new Set(names)].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        }
+        offset += chunkLength + (chunkLength % 4 ? 4 - chunkLength % 4 : 0);
+      }
+      alert("No JSON chunk found in GLB.");
+      return [];
+    }
+    function loadGlbModelLibrary(file) {
+      glbSceneByIndex = new Map();
+      glbThumbByIndex = new Map();
+      const THREE = window.F15_THREE?.THREE;
+      const GLTFLoader = window.F15_THREE?.GLTFLoader;
+      if (!THREE || !GLTFLoader) {
+        pendingGlbFile = file;
+        return;
+      }
+      pendingGlbFile = null;
+      const url = URL.createObjectURL(file);
+      new GLTFLoader().load(url, gltf => {
+        URL.revokeObjectURL(url);
+        const all = [];
+        gltf.scene.traverse(node => {
+          if (node.name && (node.isMesh || node.children?.length)) all.push(node);
+        });
+        all.forEach(node => {
+          const match = node.name.match(/(?:shape|object|obj|model)[_-]?(\d+)/i) || node.name.match(/(\d+)$/);
+          if (!match) return;
+          const idx = Number(match[1]);
+          if (Number.isInteger(idx) && idx >= 0 && idx < 128 && !glbSceneByIndex.has(idx)) {
+            glbSceneByIndex.set(idx, node.clone(true));
+          }
+        });
+        if (!glbSceneByIndex.size) {
+          all.forEach((node, idx) => {
+          if (idx < 128) glbSceneByIndex.set(idx, node.clone(true));
+          });
+        }
+        renderGlbThumbnails();
+        if (glbThumbByIndex.size) {
+          objectOverlayMode = "models";
+          document.getElementById("toggle-glb").textContent = `3D models ${glbFileName}`;
+        }
+        if (selected >= 0) renderDetails();
+        draw();
+      }, undefined, () => {
+        URL.revokeObjectURL(url);
+      });
+    }
+    function renderGlbThumbnails() {
+      const THREE = window.F15_THREE?.THREE;
+      if (!THREE || !glbSceneByIndex.size) return;
+      const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+      renderer.setSize(96, 96);
+      renderer.setClearColor(0x000000, 0);
+      const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 10000);
+      const light = new THREE.DirectionalLight(0xffffff, 2.2);
+      light.position.set(3, 5, 4);
+      const ambient = new THREE.AmbientLight(0xffffff, 1.4);
+      glbSceneByIndex.forEach((model, idx) => {
+        const scene = new THREE.Scene();
+        const clone = model.clone(true);
+        scene.add(ambient.clone(), light.clone(), clone);
+        const box = new THREE.Box3().setFromObject(clone);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        clone.position.sub(center);
+        const radius = Math.max(size.x, size.y, size.z, 1);
+        camera.position.set(0, -radius * 2.4, radius * 1.2);
+        camera.lookAt(0, 0, 0);
+        renderer.render(scene, camera);
+        const img = new Image();
+        img.onload = () => draw();
+        img.src = renderer.domElement.toDataURL("image/png");
+        glbThumbByIndex.set(idx, img);
+      });
+      renderer.dispose();
+    }
+    function autoLoadGlbModels() {
+      if (autoGlbTried) return;
+      autoGlbTried = true;
+      const candidates = glbCandidates();
+      if (location.protocol === "file:") {
+        document.getElementById("toggle-glb").textContent = "3D models need HTTP";
+        return;
+      }
+      const tryNext = idx => {
+        if (idx >= candidates.length) return;
+        fetch(candidates[idx])
+          .then(response => {
+            if (!response.ok) throw new Error(String(response.status));
+            return response.blob();
+          })
+          .then(async blob => {
+            glbFileName = candidates[idx].split("/").pop();
+            const file = new File([blob], glbFileName, { type: "model/gltf-binary" });
+            const parsed = parseGlbObjectNames(await blob.arrayBuffer());
+            glbObjectNames = parsed;
+            glbObjectNameByIndex = indexGlbObjectNames(parsed);
+            objectOverlayMode = "models";
+            document.getElementById("toggle-glb").textContent = `3D models ${glbFileName}`;
+            loadGlbModelLibrary(file);
+            draw();
+          })
+          .catch(() => tryNext(idx + 1));
+      };
+      tryNext(0);
+    }
+    function indexGlbObjectNames(names) {
+      const byIndex = new Map();
+      names.forEach(name => {
+        const match = name.match(/(?:shape|object|obj|model)[_-]?(\d+)/i) || name.match(/(\d+)$/);
+        if (!match) return;
+        const idx = Number(match[1]);
+        if (Number.isInteger(idx) && idx >= 0 && idx < 128 && !byIndex.has(idx)) {
+          byIndex.set(idx, name);
+        }
+      });
+      return byIndex;
+    }
+    function loadWorld(text, name) {
+      if (!/\.wld\.json$/i.test(name || "")) {
+        alert("Please select an exported *.WLD.json file.");
+        return;
+      }
+      world = JSON.parse(text);
+      if (world?.format !== "WLD" || !Array.isArray(world?.world_objects)) {
+        alert("This JSON is not an exported WLD world file.");
+        world = null;
+        return;
+      }
+      fileName = name || "world.WLD.json";
+      selected = -1;
+      objectOverlayMode = "off";
+      autoGlbTried = false;
+      dirty = false;
+      dirtyEl.textContent = "clean";
+      dirtyEl.style.color = "";
+      titleEl.textContent = fileName;
+      document.getElementById("toggle-glb").textContent = "Object labels off";
+      backgroundMode = gameBackdropName() ? "game" : (theaterBounds() ? "osm" : "off");
+      updateOsmButton();
+      updateStats();
+      updateGeoInfo();
+      renderDetails();
+      renderList();
+      autoLoadGlbModels();
+      draw();
+    }
+    fileInput.addEventListener("change", async event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      loadWorld(await file.text(), file.name);
+    });
+    canvas.addEventListener("pointerdown", event => {
+      if (!world) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const idx = pickObject(x, y);
+      if (idx >= 0) {
+        selectObject(idx);
+        dragging = false;
+        dragCandidate = { pointerId: event.pointerId, x, y, idx };
+        canvas.setPointerCapture(event.pointerId);
+      }
+    });
+    canvas.addEventListener("pointermove", event => {
+      if ((!dragCandidate && !dragging) || selected < 0) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      if (!dragging) {
+        if (!dragCandidate || event.pointerId !== dragCandidate.pointerId) return;
+        if (Math.hypot(x - dragCandidate.x, y - dragCandidate.y) < DRAG_START_PX) return;
+        dragging = true;
+      }
+      const p = screenToWorld(x, y);
+      objects()[selected].x_coord = p.x;
+      objects()[selected].y_coord = p.y;
+      markDirty();
+      renderDetails();
+      draw();
+    });
+    canvas.addEventListener("pointerup", () => {
+      if (dragging) renderList();
+      dragging = false;
+      dragCandidate = null;
+    });
+    canvas.addEventListener("pointercancel", () => {
+      dragging = false;
+      dragCandidate = null;
+    });
+    document.getElementById("toggle-grid").addEventListener("click", event => {
+      showGrid = !showGrid;
+      event.target.textContent = showGrid ? "Grid on" : "Grid off";
+      draw();
+    });
+    document.getElementById("toggle-glb").addEventListener("click", event => {
+      if (objectOverlayMode === "off") objectOverlayMode = "labels";
+      else if (objectOverlayMode === "labels") objectOverlayMode = "off";
+      else objectOverlayMode = "off";
+      if (objectOverlayMode === "labels") {
+        event.target.textContent = "Object labels on";
+      } else {
+        event.target.textContent = "Object labels off";
+      }
+      draw();
+    });
+    document.getElementById("toggle-osm").addEventListener("click", event => {
+      if (backgroundMode === "game") {
+        backgroundMode = theaterBounds() ? "osm" : "off";
+      } else if (backgroundMode === "osm") {
+        backgroundMode = theaterBounds() ? "nolabel" : "off";
+      } else if (backgroundMode === "nolabel") {
+        backgroundMode = "off";
+      } else {
+        backgroundMode = gameBackdropName() ? "game" : (theaterBounds() ? "osm" : "off");
+      }
+      updateOsmButton();
+      draw();
+    });
+    document.getElementById("duplicate").addEventListener("click", duplicateSelected);
+    document.getElementById("delete").addEventListener("click", deleteSelected);
+    document.getElementById("download").addEventListener("click", () => {
+      if (!world) return;
+      const blob = new Blob([JSON.stringify(world, null, 2) + "\n"], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName.replace(/\.json$/i, ".edited.json");
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("f15-three-ready", () => {
+      if (pendingGlbFile) loadGlbModelLibrary(pendingGlbFile);
+    });
+    serverWarningEl.hidden = location.protocol !== "file:";
+    resizeCanvas();
+  </script>
+</body>
+</html>

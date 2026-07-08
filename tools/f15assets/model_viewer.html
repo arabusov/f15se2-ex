@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>F-15 3D3 Model Viewer</title>
+  <style>
+    :root {
+      --bg: #11140f;
+      --panel: #1d2419;
+      --panel-2: #26301f;
+      --ink: #ece7d5;
+      --muted: #aeb89a;
+      --line: #4f5c3d;
+      --accent: #d7a84f;
+      --warn: #e56b4f;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 12%, rgba(215, 168, 79, 0.16), transparent 28rem),
+        linear-gradient(135deg, #0b0f0a 0%, var(--bg) 52%, #18150f 100%);
+      font-family: "Aptos Display", "Segoe UI", sans-serif;
+    }
+
+    header {
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid rgba(236, 231, 213, 0.12);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 21px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .hint, .stat {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button, label.file, select, a.button {
+      border: 1px solid rgba(236, 231, 213, 0.22);
+      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-decoration: none;
+    }
+
+    button:hover, label.file:hover, a.button:hover { border-color: var(--accent); }
+    input[type="file"] { display: none; }
+
+    main {
+      display: grid;
+      grid-template-columns: 300px minmax(480px, 1fr) 380px;
+      gap: 16px;
+      padding: 16px;
+    }
+
+    aside, .viewer-wrap {
+      background: rgba(29, 36, 25, 0.88);
+      border: 1px solid rgba(236, 231, 213, 0.12);
+      border-radius: 18px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+
+    .head {
+      padding: 12px 14px;
+      background: rgba(38, 48, 31, 0.9);
+      border-bottom: 1px solid rgba(236, 231, 213, 0.12);
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .list {
+      max-height: calc(100vh - 150px);
+      overflow: auto;
+      padding: 8px;
+    }
+
+    .item {
+      padding: 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: grid;
+      gap: 2px;
+    }
+
+    .item:hover, .item.active { background: rgba(215, 168, 79, 0.14); }
+    .item small { color: var(--muted); }
+
+    #viewer {
+      width: 100%;
+      height: min(78vh, calc(100vw - 720px));
+      min-height: 620px;
+      display: block;
+      background: radial-gradient(circle at center, #25301f 0%, #10160e 70%);
+    }
+
+    .info {
+      max-height: calc(100vh - 150px);
+      overflow: auto;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 135px 1fr;
+      gap: 10px;
+      align-items: start;
+      border-bottom: 1px solid rgba(236, 231, 213, 0.08);
+      padding-bottom: 8px;
+    }
+
+    .row label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    code, pre {
+      color: #fff4d6;
+      font-family: "Cascadia Mono", "Consolas", monospace;
+      font-size: 12px;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      margin: 0;
+      background: rgba(17, 23, 15, 0.78);
+      border: 1px solid rgba(236, 231, 213, 0.1);
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .warning {
+      margin: 12px 16px 0;
+      padding: 10px 12px;
+      border: 1px solid rgba(229, 107, 79, 0.45);
+      border-radius: 12px;
+      background: rgba(90, 57, 42, 0.55);
+      color: #f4d7bd;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 1000px) {
+      main { grid-template-columns: 1fr; }
+      #viewer { height: 65vh; min-height: 420px; }
+      .list, .info { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>F-15 3D3 Model Viewer</h1>
+      <div class="hint">View exported <code>15FLT.3D3.glb</code> shapes and matching <code>15FLT.3D3.json</code> metadata.</div>
+    </div>
+    <div class="toolbar">
+      <label class="file">Load GLB<input id="glb-file" type="file" accept=".glb"></label>
+      <label class="file">Load JSON<input id="json-file" type="file" accept=".json"></label>
+      <a class="button" href="map_editor.html">Map editor</a>
+      <button id="reset-view">Reset view</button>
+      <button id="frame-all">Frame all</button>
+      <button id="toggle-wire">Wire on</button>
+    </div>
+  </header>
+
+  <div class="warning" id="server-warning" hidden>
+    Auto-loading exported models is disabled from <code>file://</code> pages because browsers block local file fetches.
+    From the repository root, run <code>python3 -m http.server 8000</code>,
+    then open <code>http://localhost:8000/tools/f15assets/model_viewer.html</code>.
+  </div>
+
+  <main>
+    <aside>
+      <div class="head">
+        <strong>Shapes</strong>
+        <span class="stat" id="shape-count">0</span>
+      </div>
+      <div class="list" id="shape-list"></div>
+    </aside>
+
+    <section class="viewer-wrap">
+      <div class="head">
+        <strong id="viewer-title">No model loaded</strong>
+        <span class="stat" id="viewer-stat">Use mouse to orbit, wheel to zoom</span>
+      </div>
+      <canvas id="viewer"></canvas>
+    </section>
+
+    <aside>
+      <div class="head">
+        <strong>Shape info</strong>
+        <span class="stat" id="selected-stat">none</span>
+      </div>
+      <div class="info" id="info">
+        <div class="hint">Select a shape from the list or click geometry in the viewer.</div>
+      </div>
+    </aside>
+  </main>
+
+  <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    import * as THREE from "three";
+    import { GLTFLoader } from "https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+    import { OrbitControls } from "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js";
+
+    const canvas = document.getElementById("viewer");
+    const shapeListEl = document.getElementById("shape-list");
+    const shapeCountEl = document.getElementById("shape-count");
+    const infoEl = document.getElementById("info");
+    const viewerTitleEl = document.getElementById("viewer-title");
+    const viewerStatEl = document.getElementById("viewer-stat");
+    const selectedStatEl = document.getElementById("selected-stat");
+    const serverWarningEl = document.getElementById("server-warning");
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    renderer.setClearColor(0x000000, 0);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100000);
+    const controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 1.4));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    keyLight.position.set(3, -4, 6);
+    scene.add(keyLight);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    fillLight.position.set(-4, 5, 3);
+    scene.add(fillLight);
+
+    const root = new THREE.Group();
+    scene.add(root);
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const selectable = [];
+    const shapeByIndex = new Map();
+    let jsonSidecar = null;
+    let selectedIndex = -1;
+    let wireVisible = true;
+    let canvasPointerStart = null;
+    let suppressShapeListClickUntil = 0;
+
+    function shouldSuppressPostCanvasDragClick() {
+      return performance.now() < suppressShapeListClickUntil;
+    }
+
+    function candidates(name) {
+      return [
+        `../../converted_assets_all/${name}`,
+        `/converted_assets_all/${name}`,
+        `./${name}`,
+      ];
+    }
+
+    function escapeHtml(v) {
+      return String(v).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    }
+
+    function shapeIndexFromName(name) {
+      const match = String(name || "").match(/(?:shape|object|obj|model)[_-]?(\d+)/i) || String(name || "").match(/(\d+)$/);
+      return match ? Number(match[1]) : -1;
+    }
+
+    function shapeInfo(index) {
+      const shapeOffsets = Array.isArray(jsonSidecar?.shape_offsets) ? jsonSidecar.shape_offsets : [];
+      const modelSize = Number(jsonSidecar?.model_data_size || 0);
+      const offset = shapeOffsets[index];
+      const nextOffset = index + 1 < shapeOffsets.length ? shapeOffsets[index + 1] : modelSize;
+      const size = Number.isFinite(offset) && Number.isFinite(nextOffset) ? Math.max(0, nextOffset - offset) : null;
+      const obj = shapeByIndex.get(index);
+      const mesh = obj?.isMesh ? obj : obj?.children?.find(child => child.isMesh);
+      const meshExtras = mesh?.userData || {};
+      return { shapeOffsets, modelSize, offset, nextOffset, size, obj, mesh, meshExtras };
+    }
+
+    function rows(items) {
+      return items.map(([label, value]) => `<div class="row"><label>${escapeHtml(label)}</label><div>${value}</div></div>`).join("");
+    }
+
+    function renderInfo(index) {
+      if (index < 0) {
+        selectedStatEl.textContent = "none";
+        infoEl.innerHTML = '<div class="hint">Select a shape from the list or click geometry in the viewer.</div>';
+        return;
+      }
+      const info = shapeInfo(index);
+      const name = info.obj?.name || `shape_${String(index).padStart(3, "0")}`;
+      selectedStatEl.textContent = `shape ${index}`;
+      const skipped = (jsonSidecar?.extras?.skipped_shapes || []).find(item => Number(item.shape_index) === index);
+      const metadata = {
+        node_userData: info.obj?.userData || {},
+        mesh_userData: info.meshExtras,
+        skipped_shape: skipped || null,
+      };
+      infoEl.innerHTML = rows([
+        ["name", `<code>${escapeHtml(name)}</code>`],
+        ["shape index", `<code>${index}</code>`],
+        ["shape offset", info.offset === undefined ? "unknown" : `<code>${info.offset}</code>`],
+        ["shape end", info.nextOffset === undefined ? "unknown" : `<code>${info.nextOffset}</code>`],
+        ["shape byte size", info.size === null ? "unknown" : `<code>${info.size}</code>`],
+        ["3D3 signature", jsonSidecar?.signature === undefined ? "unknown" : `<code>0x${Number(jsonSidecar.signature).toString(16).padStart(4, "0")}</code>`],
+        ["3D3 version", jsonSidecar?.version === undefined ? "unknown" : `<code>${jsonSidecar.version}</code>`],
+        ["model data size", jsonSidecar?.model_data_size === undefined ? "unknown" : `<code>${jsonSidecar.model_data_size}</code>`],
+        ["shared pool", jsonSidecar?.shared_vertex_pool ? "present" : "none"],
+        ["trailing bytes", jsonSidecar?.trailing_bytes ? `<code>${jsonSidecar.trailing_bytes.length} base64 chars</code>` : "none"],
+        ["GLB/JSON extras", `<pre>${escapeHtml(JSON.stringify(metadata, null, 2))}</pre>`],
+      ]);
+    }
+
+    function renderShapeList() {
+      shapeListEl.innerHTML = "";
+      const indices = [...shapeByIndex.keys()].sort((a, b) => a - b);
+      shapeCountEl.textContent = `${indices.length}`;
+      indices.forEach(index => {
+        const obj = shapeByIndex.get(index);
+        const info = shapeInfo(index);
+        const el = document.createElement("div");
+        el.className = "item" + (index === selectedIndex ? " active" : "");
+        el.innerHTML = `<strong>${index}: ${escapeHtml(obj?.name || `shape_${index}`)}</strong><small>offset ${info.offset ?? "?"}, bytes ${info.size ?? "?"}</small>`;
+        el.addEventListener("click", event => {
+          if (shouldSuppressPostCanvasDragClick()) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          selectShape(index, true);
+        });
+        shapeListEl.appendChild(el);
+      });
+    }
+
+    function updateShapeVisibility() {
+      shapeByIndex.forEach((obj, index) => {
+        obj.visible = false;
+        obj.traverse(child => { child.visible = false; });
+        if (selectedIndex >= 0 && index === selectedIndex) {
+          obj.visible = true;
+          obj.traverse(child => { child.visible = true; });
+        }
+      });
+    }
+
+    function setObjectHighlight(obj, active) {
+      if (!obj) return;
+      obj.traverse(node => {
+        if (!node.isMesh) return;
+        node.material = Array.isArray(node.material) ? node.material.map(mat => cloneHighlightMaterial(mat, active)) : cloneHighlightMaterial(node.material, active);
+      });
+    }
+
+    function cloneHighlightMaterial(material, active) {
+      const mat = material?.clone ? material.clone() : new THREE.MeshStandardMaterial();
+      if (active) {
+        mat.emissive = new THREE.Color(0xd7a84f);
+        mat.emissiveIntensity = 0.45;
+      }
+      return mat;
+    }
+
+    function selectShape(index, frame) {
+      if (selectedIndex >= 0) setObjectHighlight(shapeByIndex.get(selectedIndex), false);
+      selectedIndex = index;
+      if (selectedIndex >= 0) setObjectHighlight(shapeByIndex.get(selectedIndex), true);
+      updateShapeVisibility();
+      renderShapeList();
+      renderInfo(selectedIndex);
+      if (frame) frameObject(shapeByIndex.get(selectedIndex));
+    }
+
+    function frameObject(obj) {
+      if (!obj) return frameAll();
+      const box = new THREE.Box3().setFromObject(obj);
+      if (box.isEmpty()) return;
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const radius = Math.max(size.x, size.y, size.z, 1);
+      const fov = camera.fov * Math.PI / 180;
+      const fitHeightDistance = radius / (2 * Math.tan(fov / 2));
+      const fitWidthDistance = fitHeightDistance / Math.max(camera.aspect, 0.001);
+      const distance = Math.max(fitHeightDistance, fitWidthDistance) * 1.35;
+      controls.target.copy(center);
+      camera.position.set(center.x + distance * 0.55, center.y - distance * 0.75, center.z + distance * 0.45);
+      camera.near = Math.max(0.1, radius / 1000);
+      camera.far = Math.max(1000, radius * 100);
+      camera.updateProjectionMatrix();
+      controls.update();
+    }
+
+    function frameAll() {
+      const box = new THREE.Box3().setFromObject(root);
+      if (box.isEmpty()) {
+        camera.position.set(0, -500, 300);
+        controls.target.set(0, 0, 0);
+        controls.update();
+        return;
+      }
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const radius = Math.max(size.x, size.y, size.z, 1);
+      const fov = camera.fov * Math.PI / 180;
+      const fitHeightDistance = radius / (2 * Math.tan(fov / 2));
+      const fitWidthDistance = fitHeightDistance / Math.max(camera.aspect, 0.001);
+      const distance = Math.max(fitHeightDistance, fitWidthDistance) * 1.45;
+      controls.target.copy(center);
+      camera.position.set(center.x + distance * 0.5, center.y - distance * 0.75, center.z + distance * 0.5);
+      camera.near = Math.max(0.1, radius / 1000);
+      camera.far = Math.max(1000, radius * 100);
+      camera.updateProjectionMatrix();
+      controls.update();
+    }
+
+    function rebuildShapeIndex() {
+      selectable.length = 0;
+      shapeByIndex.clear();
+      root.children.forEach(sceneRoot => {
+        const shapeNodes = sceneRoot.children.length ? sceneRoot.children : [sceneRoot];
+        shapeNodes.forEach(node => {
+          const index = shapeIndexFromName(node.name);
+          if (index >= 0 && !shapeByIndex.has(index)) {
+            shapeByIndex.set(index, node);
+          }
+        });
+      });
+      root.traverse(node => {
+        if (node.isMesh) {
+          selectable.push(node);
+        }
+      });
+      renderShapeList();
+      const indices = [...shapeByIndex.keys()].sort((a, b) => a - b);
+      selectedIndex = indices.length ? indices[0] : -1;
+      updateShapeVisibility();
+      renderShapeList();
+      renderInfo(selectedIndex);
+      if (selectedIndex >= 0) frameObject(shapeByIndex.get(selectedIndex));
+    }
+
+    function loadGlbFromUrl(url, label) {
+      return new Promise((resolve, reject) => {
+        new GLTFLoader().load(url, gltf => {
+          root.clear();
+          selectedIndex = -1;
+          const sceneRoot = gltf.scene || gltf.scenes?.[0];
+          if (sceneRoot) root.add(sceneRoot);
+          viewerTitleEl.textContent = label || url.split("/").pop();
+          rebuildShapeIndex();
+          resolve();
+        }, undefined, reject);
+      });
+    }
+
+    async function loadJsonFromUrl(url) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(String(response.status));
+      jsonSidecar = await response.json();
+      viewerStatEl.textContent = `${jsonSidecar.format || "3D3"} JSON loaded`;
+      renderShapeList();
+      renderInfo(selectedIndex);
+    }
+
+    async function autoLoad() {
+      if (location.protocol === "file:") {
+        serverWarningEl.hidden = false;
+        return;
+      }
+      for (const url of candidates("15FLT.3D3.json")) {
+        try {
+          await loadJsonFromUrl(url);
+          break;
+        } catch (_) {}
+      }
+      for (const url of candidates("15FLT.3D3.glb")) {
+        try {
+          await loadGlbFromUrl(url, "15FLT.3D3.glb");
+          return;
+        } catch (_) {}
+      }
+      viewerTitleEl.textContent = "15FLT.3D3.glb not found";
+      viewerStatEl.textContent = "Use Load GLB / Load JSON";
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      const w = Math.max(1, Math.floor(rect.width));
+      const h = Math.max(1, Math.floor(rect.height));
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    canvas.addEventListener("pointerdown", event => {
+      canvasPointerStart = { id: event.pointerId, x: event.clientX, y: event.clientY, dragged: false };
+      try {
+        canvas.setPointerCapture(event.pointerId);
+      } catch (_) {}
+    });
+
+    canvas.addEventListener("pointermove", event => {
+      if (!canvasPointerStart || canvasPointerStart.id !== event.pointerId) return;
+      if (Math.abs(event.clientX - canvasPointerStart.x) > 4 || Math.abs(event.clientY - canvasPointerStart.y) > 4) {
+        canvasPointerStart.dragged = true;
+      }
+    });
+
+    canvas.addEventListener("pointerup", event => {
+      if (!canvasPointerStart || canvasPointerStart.id !== event.pointerId) return;
+      if (canvasPointerStart.dragged) {
+        suppressShapeListClickUntil = performance.now() + 500;
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      canvasPointerStart = null;
+      try {
+        canvas.releasePointerCapture(event.pointerId);
+      } catch (_) {}
+    });
+
+    document.addEventListener("mouseup", event => {
+      if (!shouldSuppressPostCanvasDragClick()) return;
+      event.preventDefault();
+      event.stopPropagation();
+    }, true);
+
+    document.addEventListener("click", event => {
+      if (!shouldSuppressPostCanvasDragClick()) return;
+      event.preventDefault();
+      event.stopPropagation();
+    }, true);
+
+    canvas.addEventListener("click", event => {
+      if (shouldSuppressPostCanvasDragClick()) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const hit = raycaster.intersectObjects(selectable, true)[0];
+      if (!hit) return;
+      let node = hit.object;
+      while (node && node !== root) {
+        const index = shapeIndexFromName(node.name);
+        if (index >= 0) {
+          selectShape(index, false);
+          return;
+        }
+        node = node.parent;
+      }
+    });
+
+    document.getElementById("glb-file").addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      loadGlbFromUrl(url, file.name).finally(() => URL.revokeObjectURL(url));
+    });
+
+    document.getElementById("json-file").addEventListener("change", async event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      jsonSidecar = JSON.parse(await file.text());
+      viewerStatEl.textContent = `${file.name} loaded`;
+      renderShapeList();
+      renderInfo(selectedIndex);
+    });
+
+    document.getElementById("reset-view").addEventListener("click", () => selectedIndex >= 0 ? frameObject(shapeByIndex.get(selectedIndex)) : frameAll());
+    document.getElementById("frame-all").addEventListener("click", frameAll);
+    document.getElementById("toggle-wire").addEventListener("click", event => {
+      wireVisible = !wireVisible;
+      root.traverse(node => {
+        if (!node.isMesh) return;
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        mats.forEach(mat => {
+          if (mat?.name?.toLowerCase().includes("wire") || mat?.wireframe) mat.visible = wireVisible;
+        });
+      });
+      event.target.textContent = wireVisible ? "Wire on" : "Wire off";
+    });
+
+    window.addEventListener("resize", resize);
+    resize();
+    frameAll();
+    animate();
+    autoLoad();
+  </script>
+</body>
+</html>
