@@ -90,7 +90,7 @@ python3 -m tools.f15assets.cli --pretty export-sounds /home/xor/games/f15 conver
 | `*.3D3` | `.glb` + JSON/YAML sidecar | Blender-friendly model export. JSON keeps shape ids, offsets, raw chunks, and metadata. |
 | `*.3DT` | JSON/YAML sidecar | Terrain object placement tables. |
 | `*.3DG` | JSON/YAML sidecar | Terrain grid lookup data. |
-| `*.WLD` | JSON/YAML sidecar | Theater/world objects, terrain grid, object type table, flight-unit templates, and names. |
+| `*.WLD` | JSON/YAML sidecar | Theater/world objects, terrain grid, mission object type table, flight-unit templates, and names. |
 | fonts | BDF + PNG + JSON | Uses Unicode codepoints while preserving original CP437 source bytes. |
 | `F15DGTL.BIN` | raw WAV + cue WAVs + JSON | Unsigned 8-bit mono PCM at 7850 Hz by default. |
 | sound drivers | JSON sidecars | Driver executables are preserved for reverse-engineering metadata. |
@@ -124,7 +124,16 @@ Use it to load exported `*.WLD.json` files. It supports:
 - linked flight-unit summaries via `waypointIdx`;
 - exporting edited JSON.
 
-Primary and secondary mission targets are not fixed fields in `.WLD`. The start-module mission generator chooses them dynamically from world objects, `object_type_table`, terrain constraints, and `targetFlags`.
+Primary and secondary mission targets are not fixed fields in `.WLD`. The start-module mission generator chooses them dynamically from world objects, `mission_object_type_table`, terrain constraints, and `targetFlags`.
+
+Proven `.WLD` table names:
+
+```text
+terrain_target_ids.land/water       first two bytes; copied to g_landTargetId/g_waterTargetId
+shape_target_category_table         copied to g_shapeTargetCategory and used by weapon/target compatibility
+kill_tally_or_unit_flags            copied to g_tileKillTally, then exported to END as worldUnitFlags
+mission_object_type_table           used by START mission generation against missionTable[].tensionMask
+```
 
 Known useful `targetFlags` bits:
 
@@ -139,7 +148,7 @@ Known useful `targetFlags` bits:
 0x1000 enemy-counted runtime target flag
 ```
 
-The `.WLD` format does not expose a simple universal friend/enemy enum. Some runtime flags imply combat behavior, but faction semantics are partly generated at mission load.
+The `.WLD` format does not expose a simple universal friend/enemy enum. Some runtime flags imply combat behavior, but faction semantics are partly generated at mission load from `targetFlags`, `flight_units[].flags`, generated target slots, and runtime object placement.
 
 ## Sound cues
 

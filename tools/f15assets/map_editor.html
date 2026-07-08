@@ -428,9 +428,9 @@
     function flights() { return world?.flight_units || []; }
     function names() { return world?.name_strings || []; }
     function objectTypeTable() {
-      if (!world?.object_type_table) return null;
+      if (!world?.mission_object_type_table) return null;
       try {
-        return Uint8Array.from(atob(world.object_type_table), c => c.charCodeAt(0));
+        return Uint8Array.from(atob(world.mission_object_type_table), c => c.charCodeAt(0));
       } catch (_) {
         return null;
       }

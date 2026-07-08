@@ -341,8 +341,12 @@ def cmd_convert_tree(args: argparse.Namespace) -> int:
             # collide in bulk exports.
             output_base = dst_base.with_name(src.name)
 
-        json_path = output_base.with_suffix(".json")
-        yaml_path = output_base.with_suffix(".yaml")
+        if fmt == "3D3":
+            json_path = output_base.with_name(output_base.name + ".json")
+            yaml_path = output_base.with_name(output_base.name + ".yaml")
+        else:
+            json_path = output_base.with_suffix(".json")
+            yaml_path = output_base.with_suffix(".yaml")
         png_path = None
         if fmt == "PIC" and not args.no_png:
             png_path = str(output_base.with_suffix(".png"))
@@ -350,9 +354,9 @@ def cmd_convert_tree(args: argparse.Namespace) -> int:
         gltf_path = None
         if fmt == "3D3":
             if args.models == "gltf":
-                gltf_path = str(output_base.with_suffix(".gltf"))
+                gltf_path = str(output_base.with_name(output_base.name + ".gltf"))
             elif args.models == "glb":
-                gltf_path = str(output_base.with_suffix(".glb"))
+                gltf_path = str(output_base.with_name(output_base.name + ".glb"))
 
         decode_args = _decode_args(
             png=png_path,

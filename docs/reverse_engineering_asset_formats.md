@@ -84,7 +84,7 @@ The converter prioritizes forward conversion only:
 | `PHOTO.3D3` target-photo models | **glTF (`.glb` default)** + `3D3` JSON sidecar | Parsed `.3D3` JSON plus raw chunks and append metadata | Yes | No | Treat like `.3D3`; preserve append/slot metadata because runtime appends selected chunks. |
 | `*.3DT` tile placements | YAML or JSON, optional CSV view | Canonical YAML/JSON with every 16-bit field preserved | Yes | No | Text is better than Blender for placements. It is object placement data: tile level, tile index, x/y/z, and a 16-bit shape word whose low byte is used at runtime. CSV can be a view, not the canonical source. |
 | `*.3DG` terrain grid | JSON/YAML data + PNG previews | Canonical JSON/YAML with all five grid buffers | Yes | No | PNG previews are only for visualization. Exact hierarchical grid data must be kept in JSON/YAML. |
-| `*.WLD` world/campaign | YAML or JSON, optional CSV tables | Canonical YAML/JSON preserving unknown buffers, name table bytes, and record order | Yes | No | Best as structured text: world objects, flight units, terrain grid, name table, unknown buffers. CSV helps spreadsheet editing, but JSON/YAML should be canonical. |
+| `*.WLD` world/campaign | YAML or JSON, optional CSV tables | Canonical YAML/JSON preserving named binary tables, name table bytes, and record order | Yes | No | Best as structured text: world objects, flight units, terrain grid, name table, and proven mission/category tables. CSV helps spreadsheet editing, but JSON/YAML should be canonical. |
 | Palette data | GIMP `.gpl` or JASC `.pal` for editing | JSON with exact DAC tables, mode, and 6-bit/8-bit level metadata | Yes | No | Editor palette files are useful but not enough; JSON must preserve exact game palette/register metadata. |
 | Text and strings | `.po` + `.json` text bundles | In-binary text regions extracted from executable/overlay segments | Planned | No | No standalone text resource files were identified. Use string-id and source-offset maps to support translation and custom copy editing. |
 | Fonts | Unicode `BDF` + atlas `PNG` + metadata JSON | Extracted font tables in `src/fontdata.h` + metrics in `src/gfx_impl.c` | Yes | No | `export-fonts` emits one BDF, atlas, and sidecar per known font. BDF is the editable Unicode-capable bitmap font target; JSON preserves legacy CP437 source bytes, Unicode codepoints, atlas rects, advance widths, and raw bitmap rows. |
@@ -517,11 +517,11 @@ The start parser in `src/stparse.c` matches the observed file size:
 
 ```text
 u16 signature       # 0x3232
-u8  grid1[16]
-u8  grid2[256]
-u8  grid3[512]
-u8  grid4[512]
-u8  grid5[512]
+u8  level4_top_grid[16]
+u8  level3_grid[256]
+u8  level2_subgrid[512]
+u8  level1_subgrid[512]
+u8  level0_subgrid[512]
 ```
 
 All observed `.3DG` files are 1810 bytes:
@@ -534,9 +534,9 @@ If files include additional unknown suffix bytes, keep those bytes as
 
 `lookupGridCell()` in `src/stterr.c` treats the data as a five-level nested grid:
 
-- Level 4 uses `grid1` as a 4x4 top grid.
-- Level 3 uses `grid2` as a 16x16 grid.
-- Levels 2, 1, and 0 use `grid3`, `grid4`, and `grid5` with recursive 4x4
+- Level 4 uses `level4_top_grid` as a 4x4 top grid.
+- Level 3 uses `level3_grid` as a 16x16 grid.
+- Levels 2, 1, and 0 use `level2_subgrid`, `level1_subgrid`, and `level0_subgrid` with recursive 4x4
   subtiles selected from the parent cell.
 
 This is useful for terrain browsing and for reconstructing a world/tile preview
@@ -549,16 +549,16 @@ The loader is `parseWorld()` in `src/stgen.c`.
 Read order:
 
 ```text
-u8  unknown_header[2]
+u8  terrain_target_ids[2]                 # land, water
 u16 read_item_size
 u16 ground_unit_count
 u16 world_object_count
 WorldObject world_objects[read_item_size]     # 16 bytes each
 u16 flight_unit_count
 FlightUnit flight_units[flight_unit_count]    # 36 bytes each
-u8  wld_buf7[100]
-u8  wld_buf8[100]
-u8  object_type_table[100]
+u8  shape_target_category_table[100]
+u8  kill_tally_or_unit_flags[100]
+u8  mission_object_type_table[100]
 u8  terrain_grid[256]
 char name_string_table[750]
 ```
@@ -600,9 +600,16 @@ struct FlightUnit {
     int16 flags;
     int16 maxSpeed;
     uint16 fuel;
-    uint8 reserved[6];
+    int16 weaponType;    /* SimObject +0x1e after worldImportToEgame() */
+    int16 terrainColor;  /* SimObject +0x20 after worldImportToEgame() */
+    int16 damage;        /* SimObject +0x22 after worldImportToEgame() */
 };
 ```
+
+The final six `FlightUnit` bytes are proven runtime fields, not padding:
+`worldImportToEgame()` copies the whole 36-byte record into `g_simObjects`, whose
+same offsets are named `weaponType`, `terrainColor`, and `damage` in
+`struct SimObject`.
 
 Coordinates:
 
@@ -614,10 +621,26 @@ Coordinates:
   `TD00`, `JZ00`, `XV00`, `ES00`, `WX00`, `CC00`, and `HZ00`, with per-theater
   offsets.
 
+Proven table meanings from source:
+
+- `terrain_target_ids`: `parseWorld()` reads the first two bytes into
+  `wldReadBuf1`; `worldImportToEgame()` maps byte 0 to `g_landTargetId[0]` and
+  byte 1 to `g_waterTargetId[0]`.
+- `shape_target_category_table`: `worldImportToEgame()` copies this table to
+  `g_shapeTargetCategory`; `missileTargetCompat()` indexes it by target
+  `nameIndex & 0x7f` and uses the low nibble with `g_targetCompatTable`.
+- `kill_tally_or_unit_flags`: `worldImportToEgame()` copies this table to
+  `g_tileKillTally`; `worldExportToEnd()` copies it to END's `worldUnitFlags`.
+  The storage path is proven, but individual bit meanings still need debrief
+  scoring/UI confirmation.
+- `mission_object_type_table`: START mission generation compares
+  `mission_object_type_table[worldObjects[targetIdx].objectIdx & 0x7f]` with
+  `missionTable[slot].tensionMask` to choose mission templates.
+
 `exportWorldToComm()` is not a plain `.WLD` writer. It writes most loaded world
-state into `commData->worldBuf`, but omits `object_type_table` and appends
+state into `commData->worldBuf`, but omits `mission_object_type_table` and appends
 mission/runtime fields. A future `.WLD` round-trip converter should preserve the
-original load order above, including unknown buffers.
+original load order above, including the named binary tables.
 
 For editor-facing exports, keep `name_table` bytes as parsed and include any
 suffix bytes beyond the game payload as `trailing_bytes` in the JSON/YAML
@@ -680,8 +703,8 @@ For Blender:
 For world/campaign editing:
 
 1. Parse `.WLD` using the exact `parseWorld()` order.
-2. Preserve unknown buffers and the name-table payload.
-3. Expose `WorldObject`, `FlightUnit`, `terrainGrid`, and object type table as
+2. Preserve the named binary tables and the name-table payload.
+3. Expose `WorldObject`, `FlightUnit`, `terrainGrid`, and mission object type table as
    editable structured data.
 4. Keep `.WLD` workflows forward-only; no rebuild/writer path is planned.
 5. Keep parsed `name_table` bytes as they were read (including legacy short
@@ -691,9 +714,7 @@ For world/campaign editing:
 ## Open Questions
 
 - Exact palette sources for each image mode still need to be mapped.
-- The first two bytes of `.WLD` files are preserved but not yet named.
-- The purpose of `wld_buf7`, `wld_buf8`, and `object_type_table` needs more
-  semantic naming.
+- Exact `kill_tally_or_unit_flags` bit meanings need more END/debrief-path proof.
 - The full model display-list opcode grammar needs to be documented from
   `eg3drast.c` before lossless `.3D3` writing is realistic.
 - `.SPR` appears to use the PIC decoder path and sprite descriptors define

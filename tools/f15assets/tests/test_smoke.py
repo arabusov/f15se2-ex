@@ -198,17 +198,17 @@ class SmokeConvertersTest(unittest.TestCase):
         payload = {
             "format": "3DG",
             "version": 1,
-            "grid1": [0] * 16,
-            "grid2": [0x11] * 256,
-            "grid3": [0x22] * 512,
-            "grid4": [0x33] * 512,
-            "grid5": [0x44] * 512,
+            "level4_top_grid": [0] * 16,
+            "level3_grid": [0x11] * 256,
+            "level2_subgrid": [0x22] * 512,
+            "level1_subgrid": [0x33] * 512,
+            "level0_subgrid": [0x44] * 512,
             "trailing_bytes": base64.b64encode(b"tail").decode("ascii"),
         }
         encoded = build_3dg(payload)
         parsed = parse_3dg(encoded)
-        self.assertEqual(parsed["grid1"][0], 0)
-        self.assertEqual(parsed["grid2"][0], 0x11)
+        self.assertEqual(parsed["level4_top_grid"][0], 0)
+        self.assertEqual(parsed["level3_grid"][0], 0x11)
         self.assertEqual(parsed["trailing_bytes"], payload["trailing_bytes"])
         self.assertEqual(build_3dg(parsed), encoded)
 
@@ -229,7 +229,7 @@ class SmokeConvertersTest(unittest.TestCase):
     def test_wld_roundtrip(self):
         payload = {
             "format": "WLD",
-            "unknown_header": base64.b64encode(b"\x00\x00").decode("ascii"),
+            "terrain_target_ids": {"land": 0, "water": 0},
             "read_item_size": 2,
             "ground_unit_count": 0,
             "world_object_count": 1,
@@ -271,19 +271,21 @@ class SmokeConvertersTest(unittest.TestCase):
                     "flags": 0,
                     "maxSpeed": 200,
                     "fuel": 999,
-                    "reserved": base64.b64encode(b"\x00\x01\x02\x03\x04\x05").decode("ascii"),
+                    "weaponType": 0x0100,
+                    "terrainColor": 0x0302,
+                    "damage": 0x0504,
                 }
             ],
-            "wld_buf7": base64.b64encode(b"A" * 100).decode("ascii"),
-            "wld_buf8": base64.b64encode(b"B" * 100).decode("ascii"),
-            "object_type_table": base64.b64encode(b"C" * 100).decode("ascii"),
+            "shape_target_category_table": base64.b64encode(b"A" * 100).decode("ascii"),
+            "kill_tally_or_unit_flags": base64.b64encode(b"B" * 100).decode("ascii"),
+            "mission_object_type_table": base64.b64encode(b"C" * 100).decode("ascii"),
             "terrain_grid": base64.b64encode(bytes(range(256))).decode("ascii"),
-            "name_table": base64.b64encode(b"name_one\x00name_two\x00" + b"\x00" * 739).decode("ascii"),
+            "name_table": base64.b64encode(b"name_one\x00name_two\x00" + b"\x00" * 732).decode("ascii"),
             "trailing_bytes": base64.b64encode(b"wld-tail").decode("ascii"),
         }
         encoded = build_wld(payload)
         parsed = parse_wld(encoded)
-        self.assertEqual(base64.b64decode(parsed["wld_buf7"].encode("ascii"))[:3], b"AAA")
+        self.assertEqual(base64.b64decode(parsed["shape_target_category_table"].encode("ascii"))[:3], b"AAA")
         self.assertEqual(parsed["flight_units"][0]["xPrecise"], 123)
         self.assertEqual(parsed["trailing_bytes"], payload["trailing_bytes"])
         self.assertEqual(build_wld(parsed), encoded)
@@ -291,25 +293,25 @@ class SmokeConvertersTest(unittest.TestCase):
     def test_wld_roundtrip_with_short_name_table(self):
         payload = {
             "format": "WLD",
-            "unknown_header": base64.b64encode(b"\x11\x22").decode("ascii"),
+            "terrain_target_ids": {"land": 0x11, "water": 0x22},
             "read_item_size": 0,
             "ground_unit_count": 0,
             "world_object_count": 0,
             "world_objects": [],
             "flight_unit_count": 0,
             "flight_units": [],
-            "wld_buf7": base64.b64encode(b"\x01" * 100).decode("ascii"),
-            "wld_buf8": base64.b64encode(b"\x02" * 100).decode("ascii"),
-            "object_type_table": base64.b64encode(b"\x03" * 100).decode("ascii"),
+            "shape_target_category_table": base64.b64encode(b"\x01" * 100).decode("ascii"),
+            "kill_tally_or_unit_flags": base64.b64encode(b"\x02" * 100).decode("ascii"),
+            "mission_object_type_table": base64.b64encode(b"\x03" * 100).decode("ascii"),
             "terrain_grid": base64.b64encode(bytes(range(256))).decode("ascii"),
             "name_table": base64.b64encode(b"JP\x00WLD\x00").decode("ascii"),
-            "trailing_bytes": base64.b64encode(b"alt-trailing").decode("ascii"),
+            "trailing_bytes": "",
         }
         encoded = build_wld(payload)
         parsed = parse_wld(encoded)
         self.assertEqual(parsed["name_table"], payload["name_table"])
         self.assertEqual(parsed["name_strings"], ["JP", "WLD"])
-        self.assertEqual(parsed["trailing_bytes"], payload["trailing_bytes"])
+        self.assertEqual(parsed["trailing_bytes"], "")
         self.assertEqual(build_wld(parsed), encoded)
 
     def test_3d3_to_gltf_export(self):
@@ -376,7 +378,7 @@ class SmokeConvertersTest(unittest.TestCase):
         gltf = export_3d3_to_gltf(payload)
         self.assertTrue(gltf["extras"]["has_shared_vertex_pool"])
         self.assertEqual(gltf["extras"]["shared_vertex_pool"]["index_count"], 1)
-        self.assertEqual(gltf["meshes"][0]["extras"]["render_mode"], 0)
+        self.assertEqual(gltf["extras"]["skipped_shapes"][0]["render_mode"], 0)
 
     def test_3d3_to_glb_export(self):
         render_mode = bytes([0x00])
@@ -423,9 +425,9 @@ class SmokeConvertersTest(unittest.TestCase):
         }
 
         gltf = export_3d3_to_gltf(payload)
-        self.assertEqual(len(gltf["meshes"]), 1)
+        self.assertEqual(len(gltf["meshes"]), 0)
         self.assertEqual(
-            gltf["meshes"][0]["extras"]["shape_payload"]["render_error"],
+            gltf["extras"]["skipped_shapes"][0]["shape_payload"]["render_error"],
             "truncated 3D3 face-normal block",
         )
 
@@ -520,24 +522,24 @@ class SmokeConvertersTest(unittest.TestCase):
         grid_payload = {
             "format": "3DG",
             "version": 1,
-            "grid1": [1] * 16,
-            "grid2": [2] * 256,
-            "grid3": [3] * 512,
-            "grid4": [4] * 512,
-            "grid5": [5] * 512,
+            "level4_top_grid": [1] * 16,
+            "level3_grid": [2] * 256,
+            "level2_subgrid": [3] * 512,
+            "level1_subgrid": [4] * 512,
+            "level0_subgrid": [5] * 512,
         }
         wld_payload = {
             "format": "WLD",
-            "unknown_header": base64.b64encode(b"\x11\x11").decode("ascii"),
+            "terrain_target_ids": {"land": 0x11, "water": 0x11},
             "read_item_size": 0,
             "ground_unit_count": 0,
             "world_object_count": 0,
             "world_objects": [],
             "flight_unit_count": 0,
             "flight_units": [],
-            "wld_buf7": base64.b64encode(bytes([7] * 100)).decode("ascii"),
-            "wld_buf8": base64.b64encode(bytes([8] * 100)).decode("ascii"),
-            "object_type_table": base64.b64encode(bytes([9] * 100)).decode("ascii"),
+            "shape_target_category_table": base64.b64encode(bytes([7] * 100)).decode("ascii"),
+            "kill_tally_or_unit_flags": base64.b64encode(bytes([8] * 100)).decode("ascii"),
+            "mission_object_type_table": base64.b64encode(bytes([9] * 100)).decode("ascii"),
             "terrain_grid": base64.b64encode(bytes(range(256))).decode("ascii"),
             "name_table": base64.b64encode(b"ALPHA\x00BRAVO\x00").decode("ascii"),
             "trailing_bytes": "",
@@ -748,26 +750,26 @@ class SmokeConvertersTest(unittest.TestCase):
             grid_payload = {
                 "format": "3DG",
                 "version": 1,
-                "grid1": [0] * 16,
-                "grid2": [1] * 256,
-                "grid3": [2] * 512,
-                "grid4": [3] * 512,
-                "grid5": [4] * 512,
+                "level4_top_grid": [0] * 16,
+                "level3_grid": [1] * 256,
+                "level2_subgrid": [2] * 512,
+                "level1_subgrid": [3] * 512,
+                "level0_subgrid": [4] * 512,
             }
             (nested / "LANDS.3DG").write_bytes(build_3dg(grid_payload))
 
             wld_payload = {
                 "format": "WLD",
-                "unknown_header": base64.b64encode(b"\x00\x00").decode("ascii"),
+                "terrain_target_ids": {"land": 0, "water": 0},
                 "read_item_size": 0,
                 "ground_unit_count": 0,
                 "world_object_count": 0,
                 "world_objects": [],
                 "flight_unit_count": 0,
                 "flight_units": [],
-                "wld_buf7": base64.b64encode(bytes([1] * 100)).decode("ascii"),
-                "wld_buf8": base64.b64encode(bytes([2] * 100)).decode("ascii"),
-                "object_type_table": base64.b64encode(bytes([3] * 100)).decode("ascii"),
+                "shape_target_category_table": base64.b64encode(bytes([1] * 100)).decode("ascii"),
+                "kill_tally_or_unit_flags": base64.b64encode(bytes([2] * 100)).decode("ascii"),
+                "mission_object_type_table": base64.b64encode(bytes([3] * 100)).decode("ascii"),
                 "terrain_grid": base64.b64encode(bytes(range(256))).decode("ascii"),
                 "name_table": base64.b64encode(b"NODE\x00VALUE\x00").decode("ascii"),
             }
@@ -790,9 +792,9 @@ class SmokeConvertersTest(unittest.TestCase):
             self.assertTrue((output_root / "TITLE.yaml").exists())
             self.assertTrue((output_root / "TITLE.png").exists())
 
-            self.assertTrue((output_root / "SCENERY.json").exists())
-            self.assertTrue((output_root / "SCENERY.yaml").exists())
-            self.assertTrue((output_root / "SCENERY.glb").exists())
+            self.assertTrue((output_root / "SCENERY.3D3.json").exists())
+            self.assertTrue((output_root / "SCENERY.3D3.yaml").exists())
+            self.assertTrue((output_root / "SCENERY.3D3.glb").exists())
 
             self.assertTrue((output_root / "nested" / "TACTICS.json").exists())
             self.assertTrue((output_root / "nested" / "TACTICS.yaml").exists())

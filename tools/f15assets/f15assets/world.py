@@ -20,7 +20,9 @@ def parse_wld(data: bytes) -> Dict[str, Any]:
     if len(data) < 2 + 2 + 2 + 2:
         raise ValueError(".WLD data too short")
 
-    unknown_header = data[:2]
+    # parseWorld() reads these two bytes into wldReadBuf1. worldImportToEgame()
+    # later maps byte 0 to g_landTargetId[0] and byte 1 to g_waterTargetId[0].
+    terrain_target_ids = data[:2]
     offset += 2
 
     read_item_size = read_u16_le(data, offset)
@@ -73,23 +75,32 @@ def parse_wld(data: bytes) -> Dict[str, Any]:
             "flags": read_s16_le(data, offset + 24),
             "maxSpeed": read_s16_le(data, offset + 26),
             "fuel": read_u16_le(data, offset + 28),
-            "reserved": to_base64(data[offset + 30 : offset + 36]),
+            # These bytes are not padding. worldImportToEgame() copies the
+            # 36-byte FlightUnit record directly into SimObject, where offsets
+            # +0x1e/+0x20/+0x22 are weaponType, terrainColor, and damage.
+            "weaponType": read_s16_le(data, offset + 30),
+            "terrainColor": read_s16_le(data, offset + 32),
+            "damage": read_s16_le(data, offset + 34),
         }
         flight_units.append(fields)
         offset += 36
 
-    # These 100-byte tables are preserved as opaque buffers until the remaining
-    # mission/world semantics are known.
+    # wld_buf7 is copied to g_shapeTargetCategory and used by missile target
+    # compatibility through g_targetCompatTable.
     if offset + 100 > len(data):
         raise ValueError("truncated wld_buf7")
     wld_buf7 = data[offset : offset + 100]
     offset += 100
 
+    # wld_buf8 is copied to g_tileKillTally in EGAME and then to END's
+    # worldUnitFlags. Keep the cautious name until all bit meanings are proven.
     if offset + 100 > len(data):
         raise ValueError("truncated wld_buf8")
     wld_buf8 = data[offset : offset + 100]
     offset += 100
 
+    # object_type_table is used by START mission generation to match a target's
+    # objectIdx against missionTable[].tensionMask.
     if offset + 100 > len(data):
         raise ValueError("truncated object_type_table")
     object_type_table = data[offset : offset + 100]
@@ -113,16 +124,19 @@ def parse_wld(data: bytes) -> Dict[str, Any]:
     return {
         "format": "WLD",
         "version": 1,
-        "unknown_header": to_base64(unknown_header),
+        "terrain_target_ids": {
+            "land": terrain_target_ids[0],
+            "water": terrain_target_ids[1],
+        },
         "read_item_size": read_item_size,
         "ground_unit_count": ground_unit_count,
         "world_object_count": world_object_count,
         "world_objects": world_objects,
         "flight_unit_count": flight_unit_count,
         "flight_units": flight_units,
-        "wld_buf7": to_base64(wld_buf7),
-        "wld_buf8": to_base64(wld_buf8),
-        "object_type_table": to_base64(object_type_table),
+        "shape_target_category_table": to_base64(wld_buf7),
+        "kill_tally_or_unit_flags": to_base64(wld_buf8),
+        "mission_object_type_table": to_base64(object_type_table),
         "terrain_grid": to_base64(terrain_grid),
         "name_table": to_base64(name_table),
         "name_strings": names,
@@ -134,15 +148,19 @@ def build_wld(payload: Dict[str, Any]) -> bytes:
     if payload.get("format") != "WLD":
         raise ValueError("invalid payload format")
 
-    unknown_header = from_base64(payload["unknown_header"])
-    if len(unknown_header) != 2:
-        raise ValueError("unknown_header must be 2 bytes")
+    terrain_target_ids = payload["terrain_target_ids"]
+    header = bytes(
+        [
+            int(terrain_target_ids.get("land", 0)) & 0xFF,
+            int(terrain_target_ids.get("water", 0)) & 0xFF,
+        ]
+    )
 
     world_objects = payload["world_objects"]
     flight_units = payload["flight_units"]
 
     out = bytearray()
-    out.extend(bytes(unknown_header))
+    out.extend(header)
     out.extend(write_u16_le(int(payload["read_item_size"])))
     out.extend(write_u16_le(int(payload["ground_unit_count"])))
     out.extend(write_u16_le(int(payload["world_object_count"])))
@@ -172,9 +190,17 @@ def build_wld(payload: Dict[str, Any]) -> bytes:
         out.extend(write_s16_le(unit["flags"]))
         out.extend(write_s16_le(unit["maxSpeed"]))
         out.extend(write_u16_le(unit["fuel"]))
-        out.extend(from_base64(unit["reserved"]))
+        out.extend(write_s16_le(unit["weaponType"]))
+        out.extend(write_s16_le(unit["terrainColor"]))
+        out.extend(write_s16_le(unit["damage"]))
 
-    for buf in (payload["wld_buf7"], payload["wld_buf8"], payload["object_type_table"]):
+    table_keys = (
+        "shape_target_category_table",
+        "kill_tally_or_unit_flags",
+        "mission_object_type_table",
+    )
+    for key in table_keys:
+        buf = payload[key]
         buf_data = from_base64(buf)
         out.extend(buf_data[:100].ljust(100, b"\x00"))
 

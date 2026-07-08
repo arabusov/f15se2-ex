@@ -102,18 +102,19 @@ def parse_3dg(data: bytes) -> Dict[str, Any]:
     if read_u16_le(data, 0) != SIGNATURE_3DG:
         raise ValueError(f"bad .3DG signature: 0x{read_u16_le(data, 0):04x}")
 
-    # 3DG is a set of fixed-size lookup grids used by terrain selection. The
-    # field names stay generic until their in-game semantics are fully mapped.
+    # stterr.c lookupGridCell() uses these as a five-level hierarchy:
+    # level 4 is a 4x4 top grid, level 3 is a 16x16 grid, and levels 2..0 are
+    # recursive 4x4 subgrid lookup tables selected by their parent cell.
     offset = 2
-    grid1 = list(data[offset : offset + 16])
+    level4_top_grid = list(data[offset : offset + 16])
     offset += 16
-    grid2 = list(data[offset : offset + 256])
+    level3_grid = list(data[offset : offset + 256])
     offset += 256
-    grid3 = list(data[offset : offset + 512])
+    level2_subgrid = list(data[offset : offset + 512])
     offset += 512
-    grid4 = list(data[offset : offset + 512])
+    level1_subgrid = list(data[offset : offset + 512])
     offset += 512
-    grid5 = list(data[offset : offset + 512])
+    level0_subgrid = list(data[offset : offset + 512])
     offset += 512
 
     trailing = data[offset:]
@@ -122,11 +123,11 @@ def parse_3dg(data: bytes) -> Dict[str, Any]:
         "format": "3DG",
         "version": 1,
         "signature": SIGNATURE_3DG,
-        "grid1": grid1,
-        "grid2": grid2,
-        "grid3": grid3,
-        "grid4": grid4,
-        "grid5": grid5,
+        "level4_top_grid": level4_top_grid,
+        "level3_grid": level3_grid,
+        "level2_subgrid": level2_subgrid,
+        "level1_subgrid": level1_subgrid,
+        "level0_subgrid": level0_subgrid,
         "trailing_bytes": to_base64(trailing),
     }
 
@@ -135,22 +136,28 @@ def build_3dg(payload: Dict[str, Any]) -> bytes:
     if payload.get("format") != "3DG":
         raise ValueError("invalid payload format")
 
-    grid1 = payload["grid1"]
-    grid2 = payload["grid2"]
-    grid3 = payload["grid3"]
-    grid4 = payload["grid4"]
-    grid5 = payload["grid5"]
+    level4_top_grid = payload["level4_top_grid"]
+    level3_grid = payload["level3_grid"]
+    level2_subgrid = payload["level2_subgrid"]
+    level1_subgrid = payload["level1_subgrid"]
+    level0_subgrid = payload["level0_subgrid"]
 
-    if len(grid1) != 16 or len(grid2) != 256 or len(grid3) != 512 or len(grid4) != 512 or len(grid5) != 512:
+    if (
+        len(level4_top_grid) != 16
+        or len(level3_grid) != 256
+        or len(level2_subgrid) != 512
+        or len(level1_subgrid) != 512
+        or len(level0_subgrid) != 512
+    ):
         raise ValueError(".3DG grid size mismatch")
 
     out = bytearray()
     out.extend(write_u16_le(SIGNATURE_3DG))
-    out.extend(bytes(int(x) & 0xFF for x in grid1))
-    out.extend(bytes(int(x) & 0xFF for x in grid2))
-    out.extend(bytes(int(x) & 0xFF for x in grid3))
-    out.extend(bytes(int(x) & 0xFF for x in grid4))
-    out.extend(bytes(int(x) & 0xFF for x in grid5))
+    out.extend(bytes(int(x) & 0xFF for x in level4_top_grid))
+    out.extend(bytes(int(x) & 0xFF for x in level3_grid))
+    out.extend(bytes(int(x) & 0xFF for x in level2_subgrid))
+    out.extend(bytes(int(x) & 0xFF for x in level1_subgrid))
+    out.extend(bytes(int(x) & 0xFF for x in level0_subgrid))
 
     trailing = payload.get("trailing_bytes")
     if trailing:
