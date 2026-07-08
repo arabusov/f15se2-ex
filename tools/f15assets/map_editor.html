@@ -68,9 +68,10 @@
       cursor: pointer;
       font-weight: 700;
       letter-spacing: 0.02em;
+      text-decoration: none;
     }
 
-    button:hover, label.file:hover { border-color: var(--accent); }
+    button:hover, label.file:hover, a.button:hover { border-color: var(--accent); }
     input[type="file"] { display: none; }
 
     main {
@@ -272,6 +273,7 @@
       <button id="toggle-osm">Background off</button>
       <button id="toggle-grid">Grid on</button>
       <button id="toggle-glb">Object labels off</button>
+      <a class="button" href="model_viewer.html">3D model viewer</a>
       <button id="duplicate">Duplicate</button>
       <button id="delete">Delete</button>
       <button id="download">Export JSON</button>
