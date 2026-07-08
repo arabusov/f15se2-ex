@@ -357,7 +357,12 @@
 
     function updateShapeVisibility() {
       shapeByIndex.forEach((obj, index) => {
-        obj.visible = selectedIndex < 0 ? false : index === selectedIndex;
+        obj.visible = false;
+        obj.traverse(child => { child.visible = false; });
+        if (selectedIndex >= 0 && index === selectedIndex) {
+          obj.visible = true;
+          obj.traverse(child => { child.visible = true; });
+        }
       });
     }
 
@@ -433,11 +438,18 @@
     function rebuildShapeIndex() {
       selectable.length = 0;
       shapeByIndex.clear();
+      root.children.forEach(sceneRoot => {
+        const shapeNodes = sceneRoot.children.length ? sceneRoot.children : [sceneRoot];
+        shapeNodes.forEach(node => {
+          const index = shapeIndexFromName(node.name);
+          if (index >= 0 && !shapeByIndex.has(index)) {
+            shapeByIndex.set(index, node);
+          }
+        });
+      });
       root.traverse(node => {
-        if (node.isMesh) selectable.push(node);
-        const index = shapeIndexFromName(node.name);
-        if (index >= 0 && !shapeByIndex.has(index) && (node.isMesh || node.children.length)) {
-          shapeByIndex.set(index, node);
+        if (node.isMesh) {
+          selectable.push(node);
         }
       });
       renderShapeList();

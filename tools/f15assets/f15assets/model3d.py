@@ -129,10 +129,16 @@ def _decode_primitive_command_stream(
     wide_mask: bool,
     seen_faces: Optional[set[Tuple[int, ...]]] = None,
     seen_triangles: Optional[set[Tuple[Tuple[int, int, int], int]]] = None,
-) -> Tuple[List[Tuple[int, int, int]], List[int], List[Tuple[int, int]]]:
+) -> Tuple[
+    List[Tuple[int, int, int]],
+    List[int],
+    List[Tuple[int, int, Optional[int]]],
+    Dict[int, int],
+]:
     triangles: List[Tuple[int, int, int]] = []
     triangle_colors: List[int] = []
-    lines: List[Tuple[int, int]] = []
+    lines: List[Tuple[int, int, Optional[int]]] = []
+    face_edge_colors: Dict[int, int] = {}
     if seen_faces is None:
         seen_faces = set()
     if seen_triangles is None:
@@ -162,6 +168,8 @@ def _decode_primitive_command_stream(
                 if command_budget is not None:
                     command_budget -= 1
                 continue
+            for edge_idx in edge_indices:
+                face_edge_colors.setdefault(int(edge_idx), int(color))
 
             polygon_vertices = _edge_loop_from_edges(edge_indices, edges)
             polygon_vertices = [
@@ -205,12 +213,13 @@ def _decode_primitive_command_stream(
             color = stream[cursor + 1]
             cursor += 2
             if color != 0xFF and edge_idx < len(edges):
-                lines.append(edges[edge_idx])
+                a, b = edges[edge_idx]
+                lines.append((a, b, int(color)))
 
         if command_budget is not None:
             command_budget -= 1
 
-    return triangles, triangle_colors, lines
+    return triangles, triangle_colors, lines, face_edge_colors
 
 
 def _decode_edge_record_candidates(
@@ -311,15 +320,17 @@ def _decode_primitive_payload(
 ) -> Tuple[
     List[Tuple[int, int, int]],
     List[int],
-    List[Tuple[int, int]],
+    List[Tuple[int, int, Optional[int]]],
+    Dict[int, int],
     Optional[str],
 ]:
     if cursor >= len(stream):
-        return [], [], [], "missing_primitive_payload"
+        return [], [], [], {}, "missing_primitive_payload"
 
     triangles: List[Tuple[int, int, int]] = []
     triangle_colors: List[int] = []
-    lines: List[Tuple[int, int]] = []
+    lines: List[Tuple[int, int, Optional[int]]] = []
+    face_edge_colors: Dict[int, int] = {}
     try:
         command_budget = stream[cursor]
         cursor += 1
@@ -333,7 +344,7 @@ def _decode_primitive_payload(
             shared_triangles: set[Tuple[Tuple[int, int, int], int]] = set()
             rle_stream = stream[cursor:]
             if not rle_stream:
-                return triangles, triangle_colors, lines, "empty_rle_stream"
+                return triangles, triangle_colors, lines, face_edge_colors, "empty_rle_stream"
 
             # The stream format stores one leading byte before the RLE row table
             # that is not part of the decode source in this game format.
@@ -359,12 +370,21 @@ def _decode_primitive_payload(
                     visible_mask,
                 )
 
-                # The order list is terminated by 0xFF.
+                # The game follows one view-dependent order, terminated by
+                # 0xFF. A self-contained editable export must preserve every
+                # primitive run that can be selected by the visibility masks,
+                # otherwise aircraft faces disappear from static GLB output.
+                ordered_runs: List[int] = []
                 for run_edge in order:
                     if run_edge == 0xFF:
                         break
-                    if run_edge >= rle_entry_count:
-                        continue
+                    if run_edge < rle_entry_count and run_edge not in ordered_runs:
+                        ordered_runs.append(run_edge)
+                for run_edge in range(rle_entry_count):
+                    if run_edge not in ordered_runs:
+                        ordered_runs.append(run_edge)
+
+                for run_edge in ordered_runs:
                     if run_edge * 2 + 1 >= len(coord):
                         continue
                     run_offset = int.from_bytes(
@@ -376,7 +396,7 @@ def _decode_primitive_payload(
                         continue
                     run_ptr = rle_stream[data_offset + run_offset :]
                     run_count = run_counts[run_edge]
-                    run_triangles, run_colors, run_lines = _decode_primitive_command_stream(
+                    run_triangles, run_colors, run_lines, run_face_edge_colors = _decode_primitive_command_stream(
                         run_ptr,
                         run_count,
                         vertices,
@@ -388,10 +408,11 @@ def _decode_primitive_payload(
                     triangles.extend(run_triangles)
                     triangle_colors.extend(run_colors)
                     lines.extend(run_lines)
+                    face_edge_colors.update(run_face_edge_colors)
             else:
-                return triangles, triangle_colors, lines, "truncated_rle_payload"
+                return triangles, triangle_colors, lines, face_edge_colors, "truncated_rle_payload"
         elif command_budget != 0:
-            triangles_block, colors_block, lines_block = _decode_primitive_command_stream(
+            triangles_block, colors_block, lines_block, edge_color_block = _decode_primitive_command_stream(
                 stream[cursor:],
                 command_budget,
                 vertices,
@@ -401,10 +422,11 @@ def _decode_primitive_payload(
             triangles.extend(triangles_block)
             triangle_colors.extend(colors_block)
             lines.extend(lines_block)
+            face_edge_colors.update(edge_color_block)
     except Exception as exc:
-        return triangles, triangle_colors, lines, f"decode_exception:{exc}"
+        return triangles, triangle_colors, lines, face_edge_colors, f"decode_exception:{exc}"
 
-    return triangles, triangle_colors, lines, None
+    return triangles, triangle_colors, lines, face_edge_colors, None
 
 
 def _skip_visibility_mask(data: bytes, offset: int, wide: bool) -> int:
@@ -678,14 +700,15 @@ def _decode_model_edges_and_primitives(
     edges: List[Tuple[int, int]] = []
     triangles: List[Tuple[int, int, int]] = []
     triangle_colors: List[int] = []
-    lines: List[Tuple[int, int]] = []
+    lines: List[Tuple[int, int, Optional[int]]] = []
+    face_edge_colors_by_index: Dict[int, int] = {}
 
     fixed_edges, fixed_cursor, fixed_edge_decode_error = _decode_fixed_edge_records(
         edge_payload,
         edge_count,
         wide_mask,
     )
-    fixed_triangles, fixed_colors, fixed_lines, fixed_decode_error = _decode_primitive_payload(
+    fixed_triangles, fixed_colors, fixed_lines, fixed_face_edge_colors, fixed_decode_error = _decode_primitive_payload(
         edge_payload,
         fixed_cursor,
         vertices,
@@ -700,6 +723,7 @@ def _decode_model_edges_and_primitives(
     triangles = fixed_triangles
     triangle_colors = fixed_colors
     lines = fixed_lines
+    face_edge_colors_by_index = fixed_face_edge_colors
     rle_decode_error = fixed_decode_error or fixed_edge_decode_error
 
     needs_adaptive = (
@@ -713,7 +737,8 @@ def _decode_model_edges_and_primitives(
         chosen_edges: Optional[List[Tuple[int, int]]] = None
         chosen_triangles: List[Tuple[int, int, int]] = []
         chosen_colors: List[int] = []
-        chosen_lines: List[Tuple[int, int]] = []
+        chosen_lines: List[Tuple[int, int, Optional[int]]] = []
+        chosen_face_edge_colors: Dict[int, int] = {}
         chosen_error: Optional[str] = None
 
         for cand_edges, cand_cursor in edge_candidates:
@@ -723,7 +748,7 @@ def _decode_model_edges_and_primitives(
             visible_edge_count = sum(
                 1 for a, b in cand_edges if a < len(vertices) and b < len(vertices) and a != b
             )
-            tri_block, color_block, line_block, decode_error = _decode_primitive_payload(
+            tri_block, color_block, line_block, face_edge_color_block, decode_error = _decode_primitive_payload(
                 edge_payload,
                 cand_cursor,
                 vertices,
@@ -744,6 +769,7 @@ def _decode_model_edges_and_primitives(
                 chosen_triangles = tri_block
                 chosen_colors = color_block
                 chosen_lines = line_block
+                chosen_face_edge_colors = face_edge_color_block
                 chosen_error = decode_error
 
         if (
@@ -755,13 +781,52 @@ def _decode_model_edges_and_primitives(
             triangles = chosen_triangles
             triangle_colors = chosen_colors
             lines = chosen_lines
+            face_edge_colors_by_index = chosen_face_edge_colors
             edge_decode_mode = "adaptive"
             rle_decode_error = chosen_error
 
-    unique_lines = sorted(set(tuple(sorted(edge)) for edge in edges if edge[0] != edge[1]))
-    for a, b in unique_lines:
+    face_edge_colors: Dict[Tuple[int, int], int] = {}
+    face_color_counts: Dict[int, int] = {}
+    for tri_index, tri in enumerate(triangles):
+        if len(tri) != 3 or tri_index >= len(triangle_colors):
+            continue
+        color = int(triangle_colors[tri_index])
+        face_color_counts[color] = face_color_counts.get(color, 0) + 1
+        a, b, c = (int(tri[0]), int(tri[1]), int(tri[2]))
+        for edge in (tuple(sorted((a, b))), tuple(sorted((b, c))), tuple(sorted((c, a)))):
+            face_edge_colors.setdefault(edge, color)
+    dominant_face_color: Optional[int] = None
+    if face_color_counts:
+        dominant_face_color = sorted(
+            face_color_counts.items(),
+            key=lambda item: (-item[1], item[0]),
+        )[0][0]
+
+    colored_line_edges = {
+        tuple(sorted((int(line[0]), int(line[1]))))
+        for line in lines
+        if len(line) >= 3 and line[2] is not None and line[0] != line[1]
+    }
+    structural_edges = [
+        (edge_idx, int(edge[0]), int(edge[1]))
+        for edge_idx, edge in enumerate(edges)
+        if edge[0] != edge[1]
+    ]
+    for edge_idx, a, b in structural_edges:
         if a < len(vertices) and b < len(vertices):
-            lines.append((a, b))
+            edge_key = tuple(sorted((a, b)))
+            if edge_key in colored_line_edges:
+                continue
+            lines.append(
+                (
+                    a,
+                    b,
+                    face_edge_colors_by_index.get(
+                        edge_idx,
+                        face_edge_colors.get(edge_key, dominant_face_color),
+                    ),
+                )
+            )
 
     return {
         "render_mode": render_mode,
@@ -779,6 +844,8 @@ def _decode_model_edges_and_primitives(
             "edge_decode_mode": edge_decode_mode,
             "edge_candidates": len(edge_candidates),
             "edge_decode_error": rle_decode_error,
+            "face_edge_color_count": len(face_edge_colors_by_index),
+            "dominant_face_color": dominant_face_color,
         },
     }
 
@@ -1139,8 +1206,23 @@ def export_3d3_to_gltf(payload: Dict[str, Any]) -> Dict[str, Any]:
                         }
                     )
 
-            uniq_lines = sorted(set(tuple(sorted(edge)) for edge in lines if edge[0] != edge[1]))
-            if uniq_lines:
+            lines_by_color: Dict[Optional[int], set[Tuple[int, int]]] = {}
+            for line in lines:
+                if len(line) == 2:
+                    a, b = int(line[0]), int(line[1])
+                    color = None
+                else:
+                    a, b = int(line[0]), int(line[1])
+                    color = line[2]
+                    color = None if color is None else int(color)
+                if a == b:
+                    continue
+                lines_by_color.setdefault(color, set()).add(tuple(sorted((a, b))))
+
+            for color, line_set in sorted(lines_by_color.items(), key=lambda item: -1 if item[0] is None else item[0]):
+                uniq_lines = sorted(line_set)
+                if not uniq_lines:
+                    continue
                 line_indices = [int(v) for edge in uniq_lines for v in edge]
                 line_bin, line_type = _pack_indices(line_indices)
                 line_view = _emit_buffer_view(gltf, line_bin, 34963)
@@ -1153,12 +1235,30 @@ def export_3d3_to_gltf(payload: Dict[str, Any]) -> Dict[str, Any]:
                 )
                 gltf["accessors"][line_acc]["min"] = [0]
                 gltf["accessors"][line_acc]["max"] = [max(0, len(vertices) - 1)]
+
+                if color is None:
+                    material_index = 0
+                else:
+                    r, g, b, a = _face_material_color(color)
+                    material_index = len(gltf["materials"])
+                    gltf["materials"].append(
+                        {
+                            "name": f"lines_color_0x{color:02x}",
+                            "doubleSided": True,
+                            "pbrMetallicRoughness": {
+                                "baseColorFactor": [r, g, b, a],
+                                "metallicFactor": 0.0,
+                                "roughnessFactor": 1.0,
+                            },
+                        }
+                    )
+
                 primitives.append(
                     {
                         "attributes": {"POSITION": pos_acc},
                         "indices": line_acc,
                         "mode": 1,
-                        "material": 0,
+                        "material": material_index,
                     }
                 )
 
