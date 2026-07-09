@@ -97,6 +97,76 @@ void projectWorldToHud(int worldX, int worldY, int worldZ) {
     }
 }
 
+/* Fine-precision projectWorldToHud. Takes the object's *fine* world position
+ * (mapX<<5 scale on X/Y, altitude on Z — the same integrated coords the 3D model
+ * is drawn from) rather than the coarse posX/posY (÷32) the reticle used to read.
+ * The coarse path rounds the viewer and the object to the ÷32 grid independently,
+ * so under the render/sim decouple the two roundings beat ±1 against each other
+ * between sim ticks and the target box jumped around — worst up close, where one
+ * grid cell spans many screen pixels. Differencing the interpolated fine coords
+ * once and rotating at the finest power-of-two scale whose components still fit the
+ * int16 rotate inputs keeps sub-grid precision through the perspective divide (the
+ * projected ratio is scale-invariant), so the box glides with the model. */
+void projectWorldToHudFine(int32 fineX, int32 fineY, int fineZ) {
+    long relX, relY, relZ, am, camX, camY, camDepth;
+    int rx, ry, rz, sh;
+
+    relX = g_ViewX - fineX;
+    relY = fineY + g_ViewY - 0x100000L; /* (relY >> 5) == object posY - g_viewY_ */
+    relZ = (long)fineZ - (long)g_viewZ;
+
+    if (keyValue & 0x80) {
+        relX -= g_ViewX - g_camEyeX;
+        relY -= g_ViewY - g_camEyeY;
+        relZ -= -((long)(unsigned)g_viewZ - (long)g_camEyeZ);
+    }
+
+    am = labs(relX) | labs(relY) | labs(relZ);
+    sh = 0;
+    while ((am >> sh) > 0x3fff)
+        sh++;
+    rx = (int)(relX >> sh);
+    ry = (int)(relY >> sh);
+    rz = (int)(relZ >> sh);
+
+    camX = rotateVectorComponent(0, rx, ry, rz);
+    camY = rotateVectorComponent(1, rx, ry, rz);
+    camDepth = rotateVectorComponent(2, rx, ry, rz);
+
+    if (camDepth >= 0) {
+        vtxScratch.vproj.x.lo = -1;
+        return;
+    }
+
+    if (g_halfScaleRender) {
+        camX >>= 1;
+        camY >>= 1;
+    }
+
+    if (-camDepth < camX || camX < camDepth) {
+        vtxScratch.vproj.x.lo = -1;
+        return;
+    }
+
+    vtxScratch.vproj.x.lo = (int)((camX << 8) / camDepth) + 160;
+    vtxScratch.vproj.y.lo = (int)((camY << 8) / camDepth);
+    vtxScratch.vproj.y.lo -= vtxScratch.vproj.y.lo >> 1 >> 1;
+    vtxScratch.vproj.y.lo += (g_pageFront[8] == 199) ? 100 : 56;
+
+    /* camDepth is in 2^sh-fine units; the coarse depth is camDepth * 2^(sh-5) and
+     * g_projDepth is that >> 3, i.e. camDepth >> (8 - sh). */
+    g_projDepth = (sh <= 8) ? (int)(camDepth >> (8 - sh)) : (int)(camDepth << (sh - 8));
+
+    if (vtxScratch.vproj.x.lo < 0 || vtxScratch.vproj.x.lo > 319) {
+        g_offscreenProjX = vtxScratch.vproj.x.lo;
+        vtxScratch.vproj.x.lo = -1;
+    }
+    if (vtxScratch.vproj.y.lo < 0 || g_pageFront[8] < vtxScratch.vproj.y.lo) {
+        g_offscreenProjX = vtxScratch.vproj.x.lo;
+        vtxScratch.vproj.x.lo = -1;
+    }
+}
+
 // ==== seg000:0xc661 ====
 long rotateVectorComponent(int axis, int vecX, int vecY, int vecZ) {
     long sum;
