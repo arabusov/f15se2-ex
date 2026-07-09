@@ -53,6 +53,7 @@ extern int shapeDataOffset(int shapeId);
 extern int sine(int angle);
 extern int cosine(int angle);
 
+extern vtxSignMask_t g_vtxSignMask;
 namespace {
 
 // The scope's 5/6 vertical aspect (see projectMapPoint / scopeAspectY in egui.c):
@@ -86,7 +87,7 @@ enum GeometryOriginalConstant : int {
     kCompatWeaponType = 4,
     kCompatTargetCategory = 7,
     kDynamicShapeFlag = 0x100,
-    kShapeOffsetTableSlot = 0x7F,
+    kShapeOffsetTableSlot = 50,
     kAircraftModelSlotOffset = 0x92,
     kDynamicShapeSlotOffset = 0xC3,
     kShapeOffsetTableEntries = 100,
@@ -417,8 +418,8 @@ int main() {
         buildVertexSignMask(0, 0);
         require(g_modelEdgeCount == kVertexSignMaskCount &&
                     g_modelWideVtxFlag == 0 &&
-                    g_vtxSignMaskLo == kVertexSignMaskAfterNegativeFirstEdge &&
-                    g_vtxSignMaskHi == -1,
+                    g_vtxSignMask.Lo == kVertexSignMaskAfterNegativeFirstEdge &&
+                    g_vtxSignMask.Hi == -1,
                 "buildVertexSignMask flips the original low sign-mask bit for negative edge normals");
     }
 

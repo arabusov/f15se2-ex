@@ -54,7 +54,7 @@ enum LoadOriginalConstant : int {
     kTileMatrixReadPrefix = 7,
     kTileObjectWordReads = 4,
     kTileOverflowObjectCount = 573,
-    kTileOverflowTriggerObject = 572,
+    kTileOverflowTriggerObject = 571,
     kObjectOffsetWordCount = 1,
     kObjectDataBytes = 3,
     kObjectDataNearOverflowBytes = 0xADD2,

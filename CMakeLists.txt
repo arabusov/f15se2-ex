@@ -307,6 +307,16 @@ elseif(
     OR
     CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"
 )
+    if(false)
+        add_compile_options(
+      $<$<CONFIG:Debug>:/fsanitize=address>)
+
+        # https://learn.microsoft.com/en-us/cpp/sanitizers/error-container-overflow?view=msvc-170
+        add_compile_definitions($<$<CONFIG:Debug>:_DISABLE_VECTOR_ANNOTATION>)
+        add_compile_definitions($<$<CONFIG:Debug>:_DISABLE_STRING_ANNOTATION>)
+		add_compile_definitions($<$<CONFIG:Debug>:_DISABLE_OPTIONAL_ANNOTATION>)
+    endif()
+
     target_compile_options(f15se2_core PRIVATE
         /nologo
         /TP
