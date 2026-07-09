@@ -25,6 +25,7 @@
 void drawMapMarkerBox(int centerX, int centerY, int color);
 void projectMapPoint(int mapX, int mapY);
 void blitGaugeSprite(int srcCol, int srcRow, int destX, int destY);
+static int drawRotatedGaugeSprite(int srcCol, int srcRow, float cx, float cy, int angle16);
 
 /* Sub-pixel projected position of the most recent projectMapPoint(), in absolute
  * 320-space (fractional). The integer vtxScratch.vproj.x.lo/y.lo (whole 320-space)
@@ -116,7 +117,6 @@ void drawTacticalMap(char page) {
                 if (g_scopeSweepTimer > 0 && i == 0xffff - (uint16)g_threatLabelTarget) {
                     drawMapMarkerBox(vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo, g_scopeArcColor);
                 }
-                code = g_simObjects[i].heading.w - g_ourHead + 0x800;
                 altDiff = g_simObjects[i].alt - g_viewZ;
                 altBand = 0;
                 if (altDiff < -1000) {
@@ -125,10 +125,69 @@ void drawTacticalMap(char page) {
                 if (altDiff > 1000) {
                     altBand = 2;
                 }
-                blitGaugeSprite((code >> 12) & 0xf, altBand, vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo);
+                /* GL: spin the base plane icon to the contact's relative heading;
+                 * software falls back to the atlas's 16 hand-drawn rotation frames. */
+                if (!drawRotatedGaugeSprite(0, altBand, g_scopeFx, g_scopeFy,
+                                            g_simObjects[i].heading.w - g_ourHead)) {
+                    code = g_simObjects[i].heading.w - g_ourHead + 0x800;
+                    blitGaugeSprite((code >> 12) & 0xf, altBand, vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo);
+                }
             }
         }
     }
+    for (i = 0; i < g_planeCount; i++) {
+        if (!(g_planeTable.planes[i].flags & 0x80)) {
+            projectMapPoint(g_planeTable.planes[i].mapX, g_planeTable.planes[i].mapY);
+            if (g_projDepth != -1) {
+                if (g_currentWeaponType == 2 && i == g_groundTargetLock) {
+                    drawMapMarkerBox(vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo, 7);
+                }
+                code = 5;
+                if (g_planeTable.planes[i].flags & 0x201) {
+                    code = (((-g_ourHead + 0x1000) >> 13) & 3) + 8;
+                }
+                if (g_planeTable.planes[i].active != 0) {
+                    code = 1;
+                }
+                if (g_planeTable.planes[i].flags & 8) {
+                    code = 7;
+                }
+                if (i == g_targetSlots[0].planeIndex || i == g_targetSlots[1].planeIndex) {
+                    code = 6;
+                }
+                /* Landing-field runway (cols 8-11, no status override): GL spins the
+                 * base runway icon to the ownship heading; software uses the 4
+                 * hand-drawn frames. Status blips (1/6/7) never rotate. */
+                if (code < 8 || code > 11 ||
+                    !drawRotatedGaugeSprite(8, 3, g_scopeFx, g_scopeFy, -g_ourHead)) {
+                    blitGaugeSprite(code, 3, vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo);
+                }
+            }
+        }
+    }
+    projectMapPoint(g_viewX_, g_viewY_);
+    if (g_projDepth != -1) {
+        if (!hdsprite_drawRadarOwnship(g_scopeFx, g_scopeFy)) {
+            blitGaugeSprite(0, 3, vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo);
+        }
+    }
+    for (i = 0; i < 4; i++) {
+        if (mapEvents[i].ttl != 0) {
+            projectMapPoint(mapEvents[i].mapX, mapEvents[i].mapY);
+            if (g_projDepth != -1) {
+                switch (mapEvents[i].type) {
+                case 1:
+                    blitGaugeSprite(2, 3, vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo);
+                    break;
+                case 2:
+                    blitGaugeSprite(3, 3, vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo);
+                    break;
+                }
+            }
+        }
+    }
+    /* Missiles draw last so their heading ticks sit on top of every other blip —
+     * an inbound weapon is the most important threat and must stay visible. */
     for (i = 0; i < 12; i++) {
         if (g_projectiles[i].ttl != 0) {
             projectMapPoint(g_projectiles[i].mapX, g_projectiles[i].mapY);
@@ -158,51 +217,6 @@ void drawTacticalMap(char page) {
                 scopeLine(g_scopeFx, g_scopeFy,
                           g_scopeFx - (float)sine(code) * (radius / 32768.0f),
                           g_scopeFy + (float)cosine(code) * (radius / 32768.0f) * scopeAspectY());
-            }
-        }
-    }
-    for (i = 0; i < g_planeCount; i++) {
-        if (!(g_planeTable.planes[i].flags & 0x80)) {
-            projectMapPoint(g_planeTable.planes[i].mapX, g_planeTable.planes[i].mapY);
-            if (g_projDepth != -1) {
-                if (g_currentWeaponType == 2 && i == g_groundTargetLock) {
-                    drawMapMarkerBox(vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo, 7);
-                }
-                code = 5;
-                if (g_planeTable.planes[i].flags & 0x201) {
-                    code = (((-g_ourHead + 0x1000) >> 13) & 3) + 8;
-                }
-                if (g_planeTable.planes[i].active != 0) {
-                    code = 1;
-                }
-                if (g_planeTable.planes[i].flags & 8) {
-                    code = 7;
-                }
-                if (i == g_targetSlots[0].planeIndex || i == g_targetSlots[1].planeIndex) {
-                    code = 6;
-                }
-                blitGaugeSprite(code, 3, vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo);
-            }
-        }
-    }
-    projectMapPoint(g_viewX_, g_viewY_);
-    if (g_projDepth != -1) {
-        if (!hdsprite_drawRadarOwnship(g_scopeFx, g_scopeFy)) {
-            blitGaugeSprite(0, 3, vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo);
-        }
-    }
-    for (i = 0; i < 4; i++) {
-        if (mapEvents[i].ttl != 0) {
-            projectMapPoint(mapEvents[i].mapX, mapEvents[i].mapY);
-            if (g_projDepth != -1) {
-                switch (mapEvents[i].type) {
-                case 1:
-                    blitGaugeSprite(2, 3, vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo);
-                    break;
-                case 2:
-                    blitGaugeSprite(3, 3, vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo);
-                    break;
-                }
             }
         }
     }
@@ -272,6 +286,18 @@ void blitGaugeSprite(int srcCol, int srcRow, int destX, int destY) {
     gaugeSpriteParams.width = 7;
     gaugeSpriteParams.height = 7;
     gfx_blitSpriteClipped((int16 *)&gaugeSpriteParams);
+}
+
+/* GL-only radar rotation: draw the base atlas frame (srcCol,srcRow) spun to angle16
+ * (the game's 16-bit heading units, clockwise) about the sub-pixel blip centre —
+ * the HD path spins one icon smoothly rather than snapping to a hand-drawn frame.
+ * Returns 0 on the software backend so the caller keeps the pre-rotated atlas frame. */
+static int drawRotatedGaugeSprite(int srcCol, int srcRow, float cx, float cy, int angle16) {
+    int srcX = srcCol * 8 + 1;
+    int srcY = srcRow * 8 + 31;
+    float rad = (float)(int16)angle16 * (float)(6.283185307179586 / 65536.0);
+    return r2d_submitImageRot(gfx_spriteBufImage((int)gfxBufPtr), srcX, srcY, 7, 7,
+                              cx, cy, 7.0f, 7.0f, rad, 0);
 }
 
 // ==== seg000:0xa8c8 ====

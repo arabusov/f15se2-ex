@@ -1713,6 +1713,65 @@ void r3dgl_drawImageF(R2DImage *img, int srcX, int srcY, int imgW, int imgH,
     glDisable(GL_BLEND);
 }
 
+/* Like r3dgl_drawImageF but the quad is rotated by angleRad (clockwise on screen)
+ * about the 320-space centre (cx,cy). Used by the HD radar path so a single base
+ * sprite spins smoothly to a contact's heading instead of snapping to one of the
+ * atlas's hand-drawn rotation frames. The device-space half-extents use scaleX on
+ * both axes so the icon stays rigid (square) as it turns rather than shearing with
+ * the non-square 320x200 pixel aspect. */
+void r3dgl_drawImageRot(R2DImage *img, int srcX, int srcY, int imgW, int imgH,
+                        float cx, float cy, float dstW, float dstH,
+                        float angleRad, int key) {
+    SDL_Palette *pal = gfx_getPalette();
+    SDL_Surface *surf = r2d_imageSurface(img);
+    GLuint itex;
+    float u0, v0, u1, v1, hu, hv;
+    float dcx, dcy, hw, hh, cs, sn;
+    /* corner offsets (device px, y-down): TL, TR, BR, BL — matching the texcoords */
+    static const float cxoff[4] = { -1.0f,  1.0f,  1.0f, -1.0f };
+    static const float cyoff[4] = { -1.0f, -1.0f,  1.0f,  1.0f };
+    float u[4], vtc[4];
+    int k;
+    if (!surf || !pal) return;
+    itex = imageTexture(img, pal, gfx_paletteGeneration());
+    if (!itex) return;
+    overlay2DState();
+    glEnable(GL_TEXTURE_2D);
+    glColor3ub(255, 255, 255);
+    if (key < 0) {
+        glDisable(GL_BLEND);
+    } else {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
+    glBindTexture(GL_TEXTURE_2D, itex);
+    hu = 0.5f / (float)surf->w;
+    hv = 0.5f / (float)surf->h;
+    u0 = (float)srcX / (float)surf->w + hu;
+    v0 = (float)srcY / (float)surf->h + hv;
+    u1 = (float)(srcX + imgW) / (float)surf->w - hu;
+    v1 = (float)(srcY + imgH) / (float)surf->h - hv;
+    u[0] = u0; vtc[0] = v0;
+    u[1] = u1; vtc[1] = v0;
+    u[2] = u1; vtc[2] = v1;
+    u[3] = u0; vtc[3] = v1;
+    dcx = ovMapX(cx);
+    dcy = ovMapY(cy);
+    hw = dstW * s_ov.scaleX * 0.5f;
+    hh = dstH * s_ov.scaleX * 0.5f;
+    cs = SDL_cosf(angleRad);
+    sn = SDL_sinf(angleRad);
+    glBegin(GL_QUADS);
+    for (k = 0; k < 4; k++) {
+        float ox = cxoff[k] * hw, oy = cyoff[k] * hh;
+        glTexCoord2f(u[k], vtc[k]);
+        glVertex2f(dcx + ox * cs - oy * sn, dcy + ox * sn + oy * cs);
+    }
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_BLEND);
+}
+
 /* The retained page as a persistent GL texture + the dirty key it was built for.
  * Re-uploaded ONLY when its visible output could have changed (below), so the page
  * is NOT re-converted/re-uploaded every frame — the flight fire-palette cycle bumps

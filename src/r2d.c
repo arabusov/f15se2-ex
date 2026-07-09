@@ -194,6 +194,14 @@ int r2d_submitImageF(R2DImage *img, int srcX, int srcY, int srcW, int srcH,
     return 1;
 }
 
+int r2d_submitImageRot(R2DImage *img, int srcX, int srcY, int srcW, int srcH,
+                       float cx, float cy, float dstW, float dstH,
+                       float angleRad, int key) {
+    if (!img || !r2d_vectorActive()) return 0;
+    r3dgl_drawImageRot(img, srcX, srcY, srcW, srcH, cx, cy, dstW, dstH, angleRad, key);
+    return 1;
+}
+
 /* Set for the duration of a GL flight frame (between gl_beginScene's main 3D view
  * and the present). 2D submissions draw immediately while this is set — pure-2D
  * screens (debrief/briefing/menus) have no 3D pass, so their primitives bake into

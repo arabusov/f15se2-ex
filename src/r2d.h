@@ -208,6 +208,14 @@ void r2d_submitImageScaled(R2DImage *img, int srcX, int srcY, int srcW, int srcH
 int r2d_submitImageF(R2DImage *img, int srcX, int srcY, int srcW, int srcH,
                      float dstX, float dstY, float dstW, float dstH, int key);
 
+/* Rotated sprite: the base frame turns by angleRad (clockwise on screen) about the
+ * 320-space centre (cx,cy), so the HD radar can spin one icon smoothly instead of
+ * picking a hand-drawn rotation frame. GL-only; returns 1 if it drew, 0 otherwise
+ * so callers fall back to the pre-rotated software atlas frame. */
+int r2d_submitImageRot(R2DImage *img, int srcX, int srcY, int srcW, int srcH,
+                       float cx, float cy, float dstW, float dstH,
+                       float angleRad, int key);
+
 /* The software backend registers how it rasterizes a submitted image into the
  * back buffer (r2d need not own the page surface). */
 void r2d_registerSoftwareImage(void (*image)(R2DImage *img, int srcX, int srcY,

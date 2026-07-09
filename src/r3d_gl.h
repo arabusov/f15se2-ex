@@ -80,5 +80,10 @@ void r3dgl_drawImage(R2DImage *img, int srcX, int srcY, int imgW, int imgH,
  * smoothly-moving sprite such as a radar blip. GL only. */
 void r3dgl_drawImageF(R2DImage *img, int srcX, int srcY, int imgW, int imgH,
                       float dstX, float dstY, float dstW, float dstH, int key);
+/* Rotated variant: the quad turns by angleRad (clockwise on screen) about the
+ * 320-space centre (cx,cy). GL only; used for the HD radar contact icons. */
+void r3dgl_drawImageRot(R2DImage *img, int srcX, int srcY, int imgW, int imgH,
+                        float cx, float cy, float dstW, float dstH,
+                        float angleRad, int key);
 
 #endif /* R3D_GL_H */
