@@ -557,6 +557,7 @@ void setViewPosition(int, int, int) {}
 void setViewPositionFrac(int, int, int) {}
 int fixedMulQ14(int, int) { return 0; }
 int sine(int) { return 0; }
+int cosine(int) { return 0; }
 void shiftLongLeftInPlace(int, long *) {}
 void shiftLongRightInPlace(int, long *) {}
 void r3d_worldPointToCameraFar(int, int, int, long *, long *, long *) {}
