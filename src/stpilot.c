@@ -19,7 +19,7 @@
 #include <string.h>
 
 /* Private helpers for this translation unit. */
-int doFcbSearch();
+int16 doFcbSearch();
 void updateHallfame();
 void displayPilots(void);
 void printPilot(int);

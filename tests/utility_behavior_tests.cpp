@@ -13,7 +13,7 @@
 #include <iostream>
 #include <tuple>
 
-extern int randMul(uint16 arg);
+extern int16 randMul(uint16 arg);
 extern uint32 scaleCoordByLevel(int16 level, uint32 coord);
 extern void seedRandom();
 extern int getTimeOfDay(void);
@@ -21,7 +21,7 @@ extern void my_ltoa(int32 value, char *buf);
 extern void my_itoa(int16 value, char *buf);
 extern void mystrcpy(char *dest, const char *source);
 extern void mystrcat(char *dst, const char *src);
-extern int mystrlen(const char *s);
+extern int16 mystrlen(const char *s);
 extern void nearmemset(void *dst, char val, int16 count);
 extern void strcpyFromDot(char *dst, const char *src);
 extern char *formatFlightTime(int timeValue, char *buffer);

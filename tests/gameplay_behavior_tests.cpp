@@ -17,7 +17,7 @@
 
 extern int16 computeThreatRangeBearing(int16 threatX, int16 threatY, int16 threatAlt, int16 threatType,
                                      int16 *outBearing, int16 *outRange);
-extern int computeThreatScore(void);
+extern int16 computeThreatScore(void);
 extern void updateThreatAlert(void);
 extern int samCanAcquireTarget(int slot, int targetX, int targetY, int targetAlt, int mode);
 extern int16 markTargetReached(int16 targetIdx);
