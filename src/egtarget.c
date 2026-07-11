@@ -148,9 +148,20 @@ skip_aam:
     /* Air-to-ground targeting */
     range = 0x4b << (6 - (uint8)g_nightMode);
 
-    depthShift = (g_hudVisible != 0 && (uint16)(g_nearestThreatRange + g_viewZ) > 1500) ? 1 : 0;
-    if (g_hudVisible != 0 && (uint16)(g_nearestThreatRange + g_viewZ) > 4000) {
-        depthShift = 2;
+    /* depthShift is the original distance/altitude "spottability" zoom: with a far
+       target (or high altitude) it right-shifts world objects' positions in
+       drawWorldObject to draw them as if closer — bigger — without scaling their
+       geometry, so distant aircraft/scenery balloon and then shrink to true size as
+       the range closes. Detail level 4 ("no LOD tricks") disables it, so world
+       objects hold true perspective size at any range (far ones resolve to the
+       spottable single-pixel dot via the model-depth gate instead of ballooning). */
+    if (g_detailLevel >= 4) {
+        depthShift = 0;
+    } else {
+        depthShift = (g_hudVisible != 0 && (uint16)(g_nearestThreatRange + g_viewZ) > 1500) ? 1 : 0;
+        if (g_hudVisible != 0 && (uint16)(g_nearestThreatRange + g_viewZ) > 4000) {
+            depthShift = 2;
+        }
     }
 
     /* Detail level 4 widens the depth band over which an air contact resolves

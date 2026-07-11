@@ -1555,18 +1555,47 @@ static void overlay2DState(void) {
     glLoadIdentity();
 }
 
+/* Fill a wide line's endpoints with a centred square of the line's own width.
+ * GL wide lines have butt caps, so two segments of a shape (target box, hexagon,
+ * HUD frame, A2A circle) that share an endpoint leave a triangular notch at the
+ * join; the coincident corner squares of the abutting segments fill it. Axis-
+ * aligned in device space, so an axis-aligned box keeps sharp, crisp corners (a
+ * round cap would round them) — and, being bounded, it never spikes at an acute
+ * angle the way a projecting cap would. Device-space (post-ovMap) coords; the
+ * caller owns the colour / 2D state. Only worth it once lines are thick enough to
+ * gap — a 1px line's butt caps already touch. */
+static void capLineEnds(float ax, float ay, float bx, float by, float w) {
+    float hw = w * 0.5f;
+    glBegin(GL_QUADS);
+    glVertex2f(ax - hw, ay - hw); glVertex2f(ax + hw, ay - hw);
+    glVertex2f(ax + hw, ay + hw); glVertex2f(ax - hw, ay + hw);
+    glVertex2f(bx - hw, by - hw); glVertex2f(bx + hw, by - hw);
+    glVertex2f(bx + hw, by + hw); glVertex2f(bx - hw, by + hw);
+    glEnd();
+}
+
 void r3dgl_drawLine(int x1, int y1, int x2, int y2, int color) {
     SDL_Palette *pal = gfx_getPalette();
     SDL_Color c;
+    float ax, ay, bx, by;
     if (!pal) return;
     c = pal->colors[color & 0xff];
     overlay2DState();
-    glLineWidth(s_ov.lineW);
     glColor3ub(c.r, c.g, c.b);
+    ax = ovMapX((float)x1 + 0.5f); ay = ovMapY((float)y1 + 0.5f);
+    bx = ovMapX((float)x2 + 0.5f); by = ovMapY((float)y2 + 0.5f);
+    glLineWidth(s_ov.lineW);
     glBegin(GL_LINES);
-    glVertex2f(ovMapX((float)x1 + 0.5f), ovMapY((float)y1 + 0.5f));
-    glVertex2f(ovMapX((float)x2 + 0.5f), ovMapY((float)y2 + 0.5f));
+    glVertex2f(ax, ay);
+    glVertex2f(bx, by);
     glEnd();
+    /* Cap only a genuine segment. A zero-length "line" is a point — notably the
+     * distant-aircraft single dot (drawViewportLine(x,y,x,y)); GL already draws that
+     * as one fragment, and corner caps would balloon it into a fat white block over
+     * the 3D scene. Leave it as the plain dot the game has always drawn. */
+    if (s_ov.lineW > 1.5f && !(x1 == x2 && y1 == y2)) {
+        capLineEnds(ax, ay, bx, by, s_ov.lineW);
+    }
 }
 
 /* One virtual-pixel cell (scaleX x scaleY) so points keep their footprint at
@@ -1652,10 +1681,21 @@ void r3dgl_drawScopeLine(float x1, float y1, float x2, float y2, int color,
     w = s_ov.lineW * widthScale;
     glLineWidth(w < 1.0f ? 1.0f : w);
     glColor3ub(c.r, c.g, c.b);
-    glBegin(GL_LINES);
-    glVertex2f(ovMapX(x1 + 0.5f), ovMapY(y1 + 0.5f));
-    glVertex2f(ovMapX(x2 + 0.5f), ovMapY(y2 + 0.5f));
-    glEnd();
+    {
+        float ax = ovMapX(x1 + 0.5f), ay = ovMapY(y1 + 0.5f);
+        float bx = ovMapX(x2 + 0.5f), by = ovMapY(y2 + 0.5f);
+        glBegin(GL_LINES);
+        glVertex2f(ax, ay);
+        glVertex2f(bx, by);
+        glEnd();
+        /* Full-weight (widthScale >= 1) scope lines are the HUD target box/hexagon,
+         * closed shapes whose corners gap under GL butt caps; cap their ends so the
+         * joins close (still under the scissor, so a cap near a viewport edge is cut
+         * with the line). The thin 0.5 radar grid stays uncapped — its lines cross
+         * rather than share corners, and caps would blob the intersections. */
+        if (widthScale >= 1.0f && w > 1.5f)
+            capLineEnds(ax, ay, bx, by, w);
+    }
     glDisable(GL_SCISSOR_TEST);
 }
 
