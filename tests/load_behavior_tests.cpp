@@ -553,11 +553,11 @@ void fillRectBoth(int, int, int, int) {}
 struct R3DScene;
 struct R3DSubmit;
 struct R3DLine;
-void setViewPosition(int, int, int) {}
+void setViewPosition(int16, int16, int16) {}
 void setViewPositionFrac(int, int, int) {}
 int fixedMulQ14(int, int) { return 0; }
-int sine(int) { return 0; }
-int cosine(int) { return 0; }
+int16 sine(int16) { return 0; }
+int16 cosine(int16) { return 0; }
 void shiftLongLeftInPlace(int, long *) {}
 void shiftLongRightInPlace(int, long *) {}
 void r3d_worldPointToCameraFar(int, int, int, long *, long *, long *) {}
