@@ -16,5 +16,6 @@ void placeString(int16 waypointIdx);
 void initMissionStrings();
 int objectToScreen(int mapX, int mapY, int16 *outScreenX, int16 *outScreenY);
 int randomRange(int);
+int16 gunSpreadAngle(void);
 
 #endif /* F15_SE2_EGFRAME */

@@ -191,20 +191,25 @@ struct Proj3d {
 };
 STATIC_ASSERT(sizeof(struct Proj3d) == 12);
 
-/* BulletTrack: a 3D moving point (player gun rounds + threat shots) tracked for HUD
- * projection. 20-entry table, stride 12. Each frame the position is advanced by the
- * velocity (updateBulletsAndFire) and projected to the HUD (projectWorldToHud). */
-#pragma pack(1)
+/* BulletTrack: a 3D moving point (player gun rounds + threat shots), 20-entry
+ * table. posX/posY are FINE map units (coarse mapX<<5, wrapped to 21 bits with
+ * BULLET_FINE_MASK); alt is altitude units (already the same 1/32 scale). velX/
+ * velY/velZ are fine units per sim step: the coarse int16 velocities quantized
+ * the firing direction to ~7.5deg steps (sinMul of a magnitude of ~12), which
+ * aliased the whole tracer stream onto a handful of headings. posX == 0 marks a
+ * free slot. Advanced each sim step (updateBulletsAndFire), drawn interpolated
+ * (drawWorldEffects). */
 struct BulletTrack {
-    int16 posX; // +0x00  world X
-    int16 posY; // +0x02  world Y
-    int16 alt;  // +0x04  world Z / altitude
-    int16 velX; // +0x06  velocity X
-    int16 velY; // +0x08  velocity Y
-    int16 velZ; // +0x0A  velocity Z
+    int32 posX;
+    int32 posY;
+    int32 alt;
+    int32 velX;
+    int32 velY;
+    int32 velZ;
 };
-#pragma pack()
-STATIC_ASSERT(sizeof(struct BulletTrack) == 12);
+/* Fine map coords span coarse 0..0xffff << 5; the mask keeps the DOS int16
+ * coarse-wrap semantics after summing fine velocities. */
+#define BULLET_FINE_MASK 0x1FFFFF
 
 #pragma pack(1)
 struct SimObject {

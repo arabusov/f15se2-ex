@@ -483,14 +483,13 @@ void tickMessageTimers(void) {
 }
 
 void updateBulletsAndFire(void) {
-    int16 off, firing, unused, i, mag, slot;
+    int16 firing, mag, yaw, pitch, i, slot;
 
     for (i = 0; i < g_bulletTrackCount + 4; i++) {
-        off = i * 12;
-        if (*((int16 *)((char *)&bulletTracks[0].posX + off)) != 0) {
-            *((int16 *)((char *)&bulletTracks[0].posX + off)) += *((int16 *)((char *)&bulletTracks[0].velX + off));
-            *((int16 *)((char *)&bulletTracks[0].posY + off)) += *((int16 *)((char *)&bulletTracks[0].velY + off));
-            *((int16 *)((char *)&bulletTracks[0].alt + off)) += *((int16 *)((char *)&bulletTracks[0].velZ + off));
+        if (bulletTracks[i].posX != 0) {
+            bulletTracks[i].posX = (bulletTracks[i].posX + bulletTracks[i].velX) & BULLET_FINE_MASK;
+            bulletTracks[i].posY = (bulletTracks[i].posY + bulletTracks[i].velY) & BULLET_FINE_MASK;
+            bulletTracks[i].alt += bulletTracks[i].velZ;
         }
     }
     if (!(frameTick & 1)) {
@@ -503,19 +502,22 @@ void updateBulletsAndFire(void) {
     if (g_ejectState != 0) goto no_fire;
     g_gunAmmo = clampRange(g_gunAmmo - 40 / g_frameRateScaling, 0, 1000);
     makeSound(4, 2);
-    mag = 186 / g_frameRateScaling;
-    *((int16 *)((char *)&bulletTracks[0].velZ + slot * 12)) = sinMul(g_ourPitch, mag) << 5;
-    mag = cosMul(g_ourPitch, mag);
-    *((int16 *)((char *)&bulletTracks[0].velX + slot * 12)) = sinMul(g_ourHead, mag);
-    *((int16 *)((char *)&bulletTracks[0].velY + slot * 12)) = -cosMul(g_ourHead, mag);
-    off = slot * 12;
-    *((int16 *)((char *)&bulletTracks[0].posX + off)) = *((int16 *)((char *)&bulletTracks[0].velX + off)) + g_viewX_;
-    *((int16 *)((char *)&bulletTracks[0].posY + off)) = *((int16 *)((char *)&bulletTracks[0].velY + off)) + g_viewY_;
-    *((int16 *)((char *)&bulletTracks[0].alt + off)) = *((int16 *)((char *)&bulletTracks[0].velZ + off)) + g_viewZ - 2;
+    /* Round leaves the barrel along the airframe axis plus the M61's dispersion
+     * cone; magnitude in fine units per step (the original 186 coarse/s). */
+    yaw = (int16)g_ourHead + gunSpreadAngle();
+    pitch = (int16)g_ourPitch + gunSpreadAngle();
+    mag = (186 << 5) / g_frameRateScaling;
+    bulletTracks[slot].velZ = sinMul(pitch, mag);
+    mag = cosMul(pitch, mag);
+    bulletTracks[slot].velX = sinMul(yaw, mag);
+    bulletTracks[slot].velY = -cosMul(yaw, mag);
+    bulletTracks[slot].posX = (g_ViewX + bulletTracks[slot].velX) & BULLET_FINE_MASK;
+    bulletTracks[slot].posY = (0x100000L - g_ViewY + bulletTracks[slot].velY) & BULLET_FINE_MASK;
+    bulletTracks[slot].alt = bulletTracks[slot].velZ + g_viewZ - 2;
     g_gunFiredFlag = 1;
     goto done_fire;
 no_fire:
-    *((int16 *)((char *)&bulletTracks[0].posX + slot * 12)) = 0;
+    bulletTracks[slot].posX = 0;
     g_gunFiredFlag = 0;
 done_fire:
     if (firing) {

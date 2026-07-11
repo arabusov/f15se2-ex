@@ -339,13 +339,16 @@ void updateObjects(void) {
                     if (abs(g_simObjects[objIdx].pitch - pitchCmd) >= 0x800) goto after_missile_table;
 
                     trackSlot = ((frameTick >> 2) & 3) + g_bulletTrackCount;
-                    vel = 312 / g_frameRateScaling;
-                    bulletTracks[trackSlot].velZ = sinMul(-g_simObjects[objIdx].pitch, vel) << 5;
+                    /* Fine units per step + dispersion cone, like the player's
+                     * gun (the original 312 coarse/s). */
+                    vel = (312 << 5) / g_frameRateScaling;
+                    bulletTracks[trackSlot].velZ = sinMul(-g_simObjects[objIdx].pitch + gunSpreadAngle(), vel);
                     vel = cosMul(g_simObjects[objIdx].pitch, vel);
-                    bulletTracks[trackSlot].velX = sinMul(g_simObjects[objIdx].heading.w, vel);
-                    bulletTracks[trackSlot].velY = -cosMul(g_simObjects[objIdx].heading.w, vel);
-                    bulletTracks[trackSlot].posX = g_simObjects[objIdx].posX;
-                    bulletTracks[trackSlot].posY = g_simObjects[objIdx].posY;
+                    hdg = g_simObjects[objIdx].heading.w + gunSpreadAngle();
+                    bulletTracks[trackSlot].velX = sinMul(hdg, vel);
+                    bulletTracks[trackSlot].velY = -cosMul(hdg, vel);
+                    bulletTracks[trackSlot].posX = g_simObjects[objIdx].worldX & BULLET_FINE_MASK;
+                    bulletTracks[trackSlot].posY = g_simObjects[objIdx].worldY & BULLET_FINE_MASK;
                     bulletTracks[trackSlot].alt = g_simObjects[objIdx].alt;
 
                 after_missile_table:

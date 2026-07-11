@@ -2459,43 +2459,63 @@ static void drawSortedObject(struct SortRec *r) {
  * model "line" primitive uses. Colour is the raw palette index. */
 static void drawSortedLine(struct LineRec *ln) {
     struct EdgeRec rec;
-    int dA, dB, x1, y1, x2, y2;
+    int dA, dB;
+    long x1, y1, x2, y2;
 
-    VCAMX(0) = ln->baseXA;
-    VCAMY(0) = ln->camXA;
+    /* Index the vertex arrays directly — VCAMX/VCAMY take the asm's BYTE offset
+     * (vtx*4), so VCAMX(1) would alias vertex 0 and leave vertex 1 holding the
+     * previous model's stale numerators. */
+    g_vtxCamX[0] = ln->baseXA;
+    g_vtxCamY[0] = ln->camXA;
     setVtxDepth(0, ln->camYA);
-    VCAMX(1) = ln->baseXB;
-    VCAMY(1) = ln->camXB;
+    g_vtxCamX[1] = ln->baseXB;
+    g_vtxCamY[1] = ln->camXB;
     setVtxDepth(1, ln->camYB);
     dA = vtxScratch.vproj.in[0].div;
     dB = vtxScratch.vproj.in[1].div;
     if (dA < 1 && dB < 1) return; /* whole segment behind the near plane */
 
+    /* Projected coords are 32-bit and can be far outside the screen (an endpoint
+     * just in front of the near plane projects huge) — carry the full value into
+     * the 32-bit rect clip like projectModelEdges does; truncating to int16 first
+     * would alias off-screen endpoints back into view as bogus screen-crossing
+     * lines. */
     rec.flags = 0;
     if (dA >= 1) {
         projectVertexToScreen(0);
-        x1 = (int16)vtxScratch.vproj.x.v[0];
-        y1 = (int16)vtxScratch.vproj.y.v[0];
+        x1 = vtxScratch.vproj.x.v[0];
+        y1 = vtxScratch.vproj.y.v[0];
     } else {
         clipEdgeNearPlane(&rec, 0, 1); /* clip A against B -> slot 120 -> rec.x1/y1 */
-        x1 = rec.x1;
-        y1 = rec.y1;
+        x1 = JOIN32(rec.x1, rec.x1h);
+        y1 = JOIN32(rec.y1, rec.y1h);
     }
     if (dB >= 1) {
         projectVertexToScreen(1);
-        x2 = (int16)vtxScratch.vproj.x.v[1];
-        y2 = (int16)vtxScratch.vproj.y.v[1];
+        x2 = vtxScratch.vproj.x.v[1];
+        y2 = vtxScratch.vproj.y.v[1];
     } else {
         clipEdgeNearPlane(&rec, 1, 0);
-        x2 = rec.x1;
-        y2 = rec.y1;
+        x2 = JOIN32(rec.x1, rec.x1h);
+        y2 = JOIN32(rec.y1, rec.y1h);
     }
+    rec.x1 = (int16)x1;
+    rec.x1h = HI16(x1);
+    rec.y1 = (int16)y1;
+    rec.y1h = HI16(y1);
+    rec.x2 = (int16)x2;
+    rec.x2h = HI16(x2);
+    rec.y2 = (int16)y2;
+    rec.y2h = HI16(y2);
+    rec.flags = 0;
+    clipLineSegment(&rec);
+    if (rec.flags & 0x80) return; /* fully outside the viewport */
 
     gfx_setColor((unsigned char)ln->color);
-    g_lineX1 = (int16)x1;
-    g_lineY1 = (int16)y1;
-    g_lineX2 = (int16)x2;
-    g_lineY2 = (int16)y2;
+    g_lineX1 = rec.x1;
+    g_lineY1 = rec.y1;
+    g_lineX2 = rec.x2;
+    g_lineY2 = rec.y2;
     drawClipLineGlobal();
 }
 

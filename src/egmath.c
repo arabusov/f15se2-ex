@@ -486,6 +486,13 @@ int randomRange(int maxVal) { /* Original: rnd(Max). Deterministic ((long)Max * 
     return (int)(((long)(rand() & 0x7fff) * (long)maxVal) >> RAND_SCALE_SHIFT);
 }
 
+/* One axis of a gun's dispersion, in 16-bit angle units (0x10000 = full turn,
+ * so 1 milliradian ~= 10.4 units). The M61's spec cone is ~8 mil diameter; the
+ * sum of two rolls gives a triangular distribution peaked on the aim line. */
+int16 gunSpreadAngle(void) {
+    return (int16)(randomRange(45) + randomRange(45) - 44);
+}
+
 // ==== seg000:0xd21e ====
 int16 readAxisInput(int16 axisIdx) {
     int16 value;

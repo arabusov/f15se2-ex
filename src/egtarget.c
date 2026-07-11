@@ -313,10 +313,9 @@ skip_aam:
 done:;
 }
 
-/* World-space radius of an explosion burst, in fine map (posX) units; the alt
- * axis is 32x finer (velZ carries a << 5), so vertical offsets are scaled to
- * match. Tunable by eye. */
-static const int EXPLOSION_WORLD_RADIUS = 0x10;
+/* World-space radius of an explosion burst, in fine map units (the alt axis
+ * shares the same 1/32-coarse scale). Tunable by eye. */
+static const int EXPLOSION_WORLD_RADIUS = 0x20;
 
 /* Cannon tracers + explosion sparks as real world-space 3D line geometry
  * (drawWorldLine): submitted into the scene BEFORE r3d_endScene so the software
@@ -324,116 +323,111 @@ static const int EXPLOSION_WORLD_RADIUS = 0x10;
  * from drawHudWorldOverlay (which does the 2D HUD symbology) so the effects join
  * the 3D pass; game-logic order is tracer hit-detect then explosion. */
 void drawWorldEffects(void) {
-    int prevDepth, hitFlag, tmp, idx, radius, objIdx, pointY, pointX, dist, wpEntry, prevX, gunRadius, prevY;
+    int hitFlag, tmp, idx, radius, objIdx, pointY, pointX, dist, wpEntry, prevX, gunRadius;
+    /* Rounds advance and the burst timer ticks per SIM step; this runs per
+     * render frame, so the game-logic half (hit tests, expiry, timer) fires only
+     * on frames that consumed a step — the drawing half runs every frame. */
+    int stepped = g_simStepsThisFrame > 0;
+    int16 bx, by;
 
     gunRadius = 0x200 / isqrt(g_frameRateScaling * 4 + 8);
 
     for (idx = 0; idx < g_bulletTrackCount + 4; idx++) {
-        if (bulletTracks[idx].posX != 0) {
+        long ax, ay, az, ex, ey, ez;
+        if (bulletTracks[idx].posX == 0) continue;
 
-            projectWorldToHud(bulletTracks[idx].posX,
-                              bulletTracks[idx].posY,
-                              bulletTracks[idx].alt);
-            prevX = vtxScratch.vproj.x.lo;
-            prevY = vtxScratch.vproj.y.lo;
-            prevDepth = g_projDepth;
+        /* Render-interpolated position: rounds fly straight at constant speed,
+         * so pos + vel*alpha is exact between sim steps (no snapshots needed). */
+        ax = (bulletTracks[idx].posX + (((int32)bulletTracks[idx].velX * g_renderAlphaQ12) >> 12)) & BULLET_FINE_MASK;
+        ay = (bulletTracks[idx].posY + (((int32)bulletTracks[idx].velY * g_renderAlphaQ12) >> 12)) & BULLET_FINE_MASK;
+        az = bulletTracks[idx].alt + (((int32)bulletTracks[idx].velZ * g_renderAlphaQ12) >> 12);
+        ex = (ax + (bulletTracks[idx].velX >> 1)) & BULLET_FINE_MASK;
+        ey = (ay + (bulletTracks[idx].velY >> 1)) & BULLET_FINE_MASK;
+        ez = az + (bulletTracks[idx].velZ >> 1);
 
-            projectWorldToHud((bulletTracks[idx].velX >> 1) + bulletTracks[idx].posX,
-                              (bulletTracks[idx].velY >> 1) + bulletTracks[idx].posY,
-                              (bulletTracks[idx].velZ >> 1) + bulletTracks[idx].alt);
+        projectWorldToHudFine(ax, ay, (int)az);
+        prevX = vtxScratch.vproj.x.lo;
+        projectWorldToHudFine(ex, ey, (int)ez);
+        if (vtxScratch.vproj.x.lo == -1 || prevX == -1) continue;
 
-            if (vtxScratch.vproj.x.lo != -1) {
-                if (prevX != -1) {
+        /* The projectWorldToHudFine pair above gates on-screen visibility (as the
+         * original did); the tracer itself is a real world-space 3D segment
+         * (round -> half a velocity-step ahead) so it perspective-projects,
+         * occludes and hazes with the scene instead of overlaying a flat line. */
+        drawWorldLine(ax, ay, (int)az, ex, ey, (int)ez,
+                      idx < g_bulletTrackCount ? 0x0d : 0x0c);
 
-                    dist = ((frameTick >> 1) - idx) & 7;
+        if (!stepped) continue;
 
-                    /* The projectWorldToHud pair above still gates on-screen
-                     * visibility (prevX / vproj.x != -1); the tracer itself is a
-                     * real world-space 3D segment (bullet position -> half a
-                     * velocity-step ahead) so it perspective-projects, occludes
-                     * and hazes with the scene instead of overlaying a flat line. */
-                    drawWorldLine((long)(uint16)bulletTracks[idx].posX << 5,
-                                  (long)(uint16)bulletTracks[idx].posY << 5,
-                                  bulletTracks[idx].alt,
-                                  (long)(uint16)((bulletTracks[idx].velX >> 1) + bulletTracks[idx].posX) << 5,
-                                  (long)(uint16)((bulletTracks[idx].velY >> 1) + bulletTracks[idx].posY) << 5,
-                                  (bulletTracks[idx].velZ >> 1) + bulletTracks[idx].alt,
-                                  idx < g_bulletTrackCount ? 0x0d : 0x0c);
+        hitFlag = 0;
+        bx = (int16)(bulletTracks[idx].posX >> 5);
+        by = (int16)(bulletTracks[idx].posY >> 5);
 
-                    hitFlag = 0;
+        if (idx < g_bulletTrackCount) {
+            for (objIdx = 0; objIdx < g_groundUnitCount; objIdx++) {
+                if ((g_simObjects[objIdx].flags.b[0] & 0x22) == 2) {
 
-                    if (idx < g_bulletTrackCount) {
-                        for (objIdx = 0; objIdx < g_groundUnitCount; objIdx++) {
-                            if ((g_simObjects[objIdx].flags.b[0] & 0x22) == 2) {
+                    dist = (abs((int16)(bulletTracks[idx].alt - g_simObjects[objIdx].alt)) >> 5) +
+                           abs((int16)(bx - g_simObjects[objIdx].posX)) +
+                           abs((int16)(by - g_simObjects[objIdx].posY));
+                    dist = abs(dist);
 
-                                dist = (abs(bulletTracks[idx].alt -
-                                            g_simObjects[objIdx].alt) >>
-                                        5) +
-                                       abs(bulletTracks[idx].posX -
-                                           g_simObjects[objIdx].posX) +
-                                       abs(bulletTracks[idx].posY -
-                                           g_simObjects[objIdx].posY);
-                                dist = abs(dist);
+                    if (dist < gunRadius / (g_missionStatus + 1)) {
 
-                                if (dist < gunRadius / (g_missionStatus + 1)) {
+                        hitFlag = 1;
+                        g_simObjects[objIdx].flags.b[0] |= 0x10;
+                        g_hitEffectTimer = 1;
 
-                                    hitFlag = 1;
-                                    g_simObjects[objIdx].flags.b[0] |= 0x10;
-                                    g_hitEffectTimer = 1;
-
-                                    if (dist * 2 < gunRadius / (g_missionStatus + 1)) {
-                                        destroyAircraft(objIdx);
-                                        strcat(strBuf, " destroyed by gunfire");
-                                        tempStrcpy(strBuf);
-                                        g_hitEffectTimer = 8;
-                                        bulletTracks[idx].posX = 0;
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        dist = (abs(bulletTracks[idx].alt - g_viewZ) >> 5) + abs(bulletTracks[idx].posX - g_viewX_) + abs(bulletTracks[idx].posY - g_viewY_);
-                        dist = abs(dist);
-                        if (dist < 0x20) {
-                            hitFlag = 1;
-                            tempStrcpy("Hit by gunfire");
-                            if (0x20 / (4 - g_missionStatus) > dist) {
-                                bombTarget();
-                            }
+                        if (dist * 2 < gunRadius / (g_missionStatus + 1)) {
+                            destroyAircraft(objIdx);
+                            strcat(strBuf, " destroyed by gunfire");
+                            tempStrcpy(strBuf);
+                            g_hitEffectTimer = 8;
+                            bulletTracks[idx].posX = 0;
                         }
                     }
+                }
+            }
+        } else {
+            dist = (abs((int16)(bulletTracks[idx].alt - g_viewZ)) >> 5) + abs((int16)(bx - g_viewX_)) + abs((int16)(by - g_viewY_));
+            dist = abs(dist);
+            if (dist < 0x20) {
+                hitFlag = 1;
+                tempStrcpy("Hit by gunfire");
+                if (0x20 / (4 - g_missionStatus) > dist) {
+                    bombTarget();
+                }
+            }
+        }
 
-                    if (hitFlag) {
-                        g_hitMapX = bulletTracks[idx].posX;
-                        g_hitMapY = bulletTracks[idx].posY;
-                        g_hitAlt = bulletTracks[idx].alt;
-                        g_hitEffectTimer = -1;
-                    }
+        if (hitFlag) {
+            g_hitMapX = bx;
+            g_hitMapY = by;
+            g_hitAlt = (int16)bulletTracks[idx].alt;
+            g_hitEffectTimer = -1;
+        }
 
-                    if (bulletTracks[idx].alt < 0) {
-                        if (g_hitEffectTimer <= 0) {
-                            g_hitMapX = bulletTracks[idx].posX;
-                            g_hitMapY = bulletTracks[idx].posY;
-                            g_hitAlt = bulletTracks[idx].alt;
-                            g_hitEffectTimer = -1;
-                        }
-                        bulletTracks[idx].posX = 0;
+        if (bulletTracks[idx].alt < 0) {
+            if (g_hitEffectTimer <= 0) {
+                g_hitMapX = bx;
+                g_hitMapY = by;
+                g_hitAlt = (int16)bulletTracks[idx].alt;
+                g_hitEffectTimer = -1;
+            }
+            bulletTracks[idx].posX = 0;
 
-                        wpEntry = findWaypointEntry(g_hitMapX, g_hitMapY);
-                        if (wpEntry != -1 && !(g_planeTable.planes[wpEntry].flags & 0x80)) {
-                            pointX = (int16)(g_nearestTileObj->x >> 5);
-                            pointY = 0x8000 - (int16)(g_nearestTileObj->y >> 5);
+            wpEntry = findWaypointEntry(g_hitMapX, g_hitMapY);
+            if (wpEntry != -1 && !(g_planeTable.planes[wpEntry].flags & 0x80)) {
+                pointX = (int16)(g_nearestTileObj->x >> 5);
+                pointY = 0x8000 - (int16)(g_nearestTileObj->y >> 5);
 
-                            if (rangeApprox(g_hitMapX - pointX, g_hitMapY - pointY) < 24 / (g_missionStatus + 2) &&
-                                (g_planeTable.planes[wpEntry].nameIndex & 0x7f) != *(uint8 *)g_landTargetId) {
-                                destroyGroundTarget(wpEntry);
-                                strcat(strBuf, " destroyed by gunfire");
-                                tempStrcpy(strBuf);
-                                g_hitEffectTimer = 8;
-                                g_hitAlt = 0;
-                            }
-                        }
-                    }
+                if (rangeApprox(g_hitMapX - pointX, g_hitMapY - pointY) < 24 / (g_missionStatus + 2) &&
+                    (g_planeTable.planes[wpEntry].nameIndex & 0x7f) != *(uint8 *)g_landTargetId) {
+                    destroyGroundTarget(wpEntry);
+                    strcat(strBuf, " destroyed by gunfire");
+                    tempStrcpy(strBuf);
+                    g_hitEffectTimer = 8;
+                    g_hitAlt = 0;
                 }
             }
         }
@@ -453,25 +447,24 @@ void drawWorldEffects(void) {
             radius = EXPLOSION_WORLD_RADIUS;
             for (idx = 0; idx < 8; idx++) {
                 int color = randomRange(4) + COLOR_LIGHTRED;
-                int ex, ey, ez;
+                long ex, ey, ez;
                 if (g_hitAlt > 0) {
                     /* airburst: scatter in a world-space sphere around the hit */
-                    ex = g_hitMapX + randomRange(radius << 1) - radius;
-                    ey = g_hitMapY + randomRange(radius << 1) - radius;
-                    ez = g_hitAlt + ((randomRange(radius << 1) - radius) << 5);
+                    ex = hx + randomRange(radius << 1) - radius;
+                    ey = hy + randomRange(radius << 1) - radius;
+                    ez = g_hitAlt + randomRange(radius << 1) - radius;
                 } else {
                     /* ground burst: fan horizontally and plume upward */
                     tmp = randomRange(0x8000) - 0x4000;
-                    prevDepth = randomRange(radius);
-                    ex = g_hitMapX + sinMul(tmp, prevDepth);
-                    ey = g_hitMapY - cosMul(tmp, prevDepth);
-                    ez = g_hitAlt + (randomRange(radius) << 5);
+                    dist = randomRange(radius);
+                    ex = hx + sinMul(tmp, dist);
+                    ey = hy - cosMul(tmp, dist);
+                    ez = g_hitAlt + randomRange(radius);
                 }
-                drawWorldLine(hx, hy, g_hitAlt,
-                              (long)(uint16)ex << 5, (long)(uint16)ey << 5, ez, color);
+                drawWorldLine(hx, hy, g_hitAlt, ex, ey, (int)ez, color);
             }
         }
-        g_hitEffectTimer -= signOf(g_hitEffectTimer);
+        if (stepped) g_hitEffectTimer -= signOf(g_hitEffectTimer);
     } else {
         g_lockedTargetKilled = 0;
     }
