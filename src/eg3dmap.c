@@ -22,21 +22,21 @@
 
 extern vtxSignMask_t g_vtxSignMask;
 /* Private helpers for this translation unit. */
-void drawMapTiles(int originX, int originY, int zoomShift);
-void computeTileBounds(int *, int *, int *, int *);
-void worldToTileIndex(int, int, int *, int *);
-void drawMapTileObject(char far *, int, int);
-void drawModelPoint(int x, int y);
-void buildVertexSignMask(int screenX, int screenY);
-void projectModelVertices(int screenX, int screenY);
-int aspectScaleY(int screenY);
+void drawMapTiles(int16 originX, int16 originY, int16 zoomShift);
+void computeTileBounds(int16 *, int16 *, int16 *, int16 *);
+void worldToTileIndex(int16, int16, int16 *, int16 *);
+void drawMapTileObject(char FAR *, int16, int16);
+void drawModelPoint(int16 x, int16 y);
+void buildVertexSignMask(int16 screenX, int16 screenY);
+void projectModelVertices(int16 screenX, int16 screenY);
+int16 aspectScaleY(int16 screenY);
 
 // ==== seg000:0x2fda ====
 
 struct TileObject *findNearestTileObject(uint32 worldX, uint32 worldY) {
     // These locals keep single-letter names on purpose: MSC 5.1 hashes each
     // name to a fixed stack-frame slot, and this frame (18 scalars, with two
-    // hash collisions and an int-aliased-as-long scratch) only byte-matches the
+    // hash collisions and an int16-aliased-as-long scratch) only byte-matches the
     // original with this exact layout. Renaming to descriptive names shifts the
     // slots and breaks the match. See drawNearestTileObject() below for the same
     // algorithm with readable names. Legend:
@@ -49,7 +49,8 @@ struct TileObject *findNearestTileObject(uint32 worldX, uint32 worldY) {
     //   g = shape id/bits
     //   h = objDx     j = objDy          (query point -> candidate object)
     //   q = distance metric (best-so-far compare)    l = unused frame padding
-    int p, q, a, r, b, c, d, e, f, g, h, i, j, k, l, m, n, o;
+    int16 p, q, a, r, b, c, d, e, f, g, h, i, j, k, l, n, o;
+    int32 m; /* the "int-aliased-as-long" scratch: must hold the full 20-bit fine coord */
 
     nearestTile.dist = 0x7fff;
     for (c = 1; c <= 2; c++) {
@@ -98,8 +99,8 @@ struct TileObject *findNearestTileObject(uint32 worldX, uint32 worldY) {
                                 nearestTile.entry = g_curTileEntry;
                                 nearestTile.id = g;
                                 nearestTile.dist = q;
-                                nearestTile.x = worldX + (long)h;
-                                nearestTile.y = worldY + (long)j;
+                                nearestTile.x = worldX + (int32)h;
+                                nearestTile.y = worldY + (int32)j;
                             }
                         }
                     }
@@ -114,7 +115,7 @@ struct TileObject *findNearestTileObject(uint32 worldX, uint32 worldY) {
     return 0;
 }
 
-void addTileEntry(struct TileObject *rec, int value, char tag) {
+void addTileEntry(struct TileObject *rec, int16 value, char tag) {
     rec->shapeOff = value;
     rec->flag = tag;
     memcpy(&g_dynTileEntries[g_tileEntryCount++], &rec->lod, 8);
@@ -122,7 +123,7 @@ void addTileEntry(struct TileObject *rec, int value, char tag) {
 }
 
 // ==== seg000:0x3266 ====
-int lookupTileEntry(int lod, int subIndex, int tileX, int tileY) {
+int16 lookupTileEntry(int16 lod, int16 subIndex, int16 tileX, int16 tileY) {
     for (g_tileEntryIdx = g_tileEntryCount - 1; g_tileEntryIdx >= 0; g_tileEntryIdx--) {
         if (g_dynTileEntries[g_tileEntryIdx].lod == lod &&
             g_dynTileEntries[g_tileEntryIdx].subIndex == subIndex &&
@@ -135,29 +136,19 @@ int lookupTileEntry(int lod, int subIndex, int tileX, int tileY) {
 }
 
 void drawNearestTileObject(uint32 coord1, uint32 coord2, uint32 coord3) {
-    int yOff;
-    int fracX;
-    int lod;
-    int fracY;
-    int subIdx;
-    int relX;
-    int relY;
-    int tileX;
-    int tileY;
+    int16 yOff, fracX, lod, fracY, subIdx, relX, relY, tileX, tileY, cell, xOff;
     uint32 scaled;
-    int cell;
-    int xOff;
 
     *(char *)&g_posVisibleFlag = 0;
     nearestTile.dist = 0x7fff;
     lod = 4;
     scaled = scaleCoordToLod(lod, coord1);
-    tileX = (int)(scaled >> 12);
-    fracX = (int)scaled & 0xfff;
+    tileX = (int16)(scaled >> 12);
+    fracX = (int16)scaled & 0xfff;
     scaled = scaleCoordToLod(lod, coord2);
-    tileY = (int)(scaled >> 12);
-    fracY = (int)scaled & 0xfff;
-    g_viewPosZ = (int)scaleCoordToLod(lod, coord3);
+    tileY = (int16)(scaled >> 12);
+    fracY = (int16)scaled & 0xfff;
+    g_viewPosZ = (int16)scaleCoordToLod(lod, coord3);
     xOff = 0x800 - fracX;
     yOff = 0x800 - fracY;
     g_viewPosX = fracX - 0x800;
@@ -178,7 +169,7 @@ void drawNearestTileObject(uint32 coord1, uint32 coord2, uint32 coord3) {
     }
     if (nearestTile.dist != 0x7fff) {
         g_curTileEntry = nearestTile.entry;
-        g_modelStreamPtr = (char far *)(g_world3dData + buf3d3[nearestTile.entry->shape]);
+        g_modelStreamPtr = (char FAR *)(g_world3dData + buf3d3[nearestTile.entry->shape]);
         g_objRelX = g_curTileEntry->x - g_viewPosX;
         g_objRelY = g_curTileEntry->y - g_viewPosY;
         g_objTransform[0] = g_curTileEntry->z - g_viewPosZ;
@@ -194,8 +185,8 @@ void drawNearestTileObject(uint32 coord1, uint32 coord2, uint32 coord3) {
 }
 
 // ==== seg000:0x345e ====
-void renderMapTerrain(const int16 *transform, int mapX, int mapY, int zoomShift) {
-    int tmp0, tmp1;
+void renderMapTerrain(const int16 *transform, int16 mapX, int16 mapY, int16 zoomShift) {
+    int16 tmp0, tmp1;
     g_objShade = 0;
     setup3DTransform(transform, 0, 0, 0, 0, 0, 0, 0);
     /* clip-left / clip-top are 16-bit descriptor words (see setupViewport). */
@@ -206,8 +197,8 @@ void renderMapTerrain(const int16 *transform, int mapX, int mapY, int zoomShift)
 
 // ==== seg000:0x51f9 ====
 
-void drawMapTiles(int originX, int originY, int zoomShift) {
-    int maxTileY, screenY, minTileX, minTileY, subIdx, col, row, cell, maxTileX, screenX;
+void drawMapTiles(int16 originX, int16 originY, int16 zoomShift) {
+    int16 maxTileY, screenY, minTileX, minTileY, subIdx, col, row, cell, maxTileX, screenX;
 
     g_mapOriginX = originX >> (char)zoomShift;
     g_mapOriginY = originY >> (char)zoomShift;
@@ -228,7 +219,7 @@ void drawMapTiles(int originX, int originY, int zoomShift) {
                         g_curTileEntry = matrix3dt_2[g_curLod][cell];
                         for (subIdx = 0; matrix3dt[g_curLod][cell] > subIdx; subIdx++) {
                             if (g_curTileEntry->z == 0) {
-                                g_modelStreamPtr = (char far *)(g_world3dData + buf3d3[g_curTileEntry->shape]);
+                                g_modelStreamPtr = (char FAR *)(g_world3dData + buf3d3[g_curTileEntry->shape]);
                                 drawMapTileObject(g_modelStreamPtr,
                                                   (g_curTileEntry->x >> (char)g_tileZoomShift) + screenX,
                                                   (g_curTileEntry->y >> (char)g_tileZoomShift) + screenY);
@@ -243,7 +234,7 @@ void drawMapTiles(int originX, int originY, int zoomShift) {
 }
 
 // ==== seg000:0x3638 ====
-void computeTileBounds(int *minTileX, int *maxTileX, int *minTileY, int *maxTileY) {
+void computeTileBounds(int16 *minTileX, int16 *maxTileX, int16 *minTileY, int16 *maxTileY) {
     worldToTileIndex(0, 0, minTileX, minTileY);
     if (*minTileX < 0) {
         *minTileX = 0;
@@ -261,22 +252,22 @@ void computeTileBounds(int *minTileX, int *maxTileX, int *minTileY, int *maxTile
 }
 
 // ==== seg000:0x3694 ====
-void worldToTileIndex(int worldX, int worldY, int *outCol, int *outRow) {
+void worldToTileIndex(int16 worldX, int16 worldY, int16 *outCol, int16 *outRow) {
     *outCol = (worldX - g_viewCenterX + g_mapOriginX) / g_tileWorldSize;
     *outRow = ((worldY - g_viewCenterY) * 4 / 3 + g_mapOriginY) / g_tileWorldSize;
 }
 
 // ==== seg000:0x36d2 ====
-void drawMapTileObject(char far *modelData, int screenX, int screenY) {
-    *(char far **)&g_modelStreamPtr = modelData;
+void drawMapTileObject(char FAR *modelData, int16 screenX, int16 screenY) {
+    *(char FAR **)&g_modelStreamPtr = modelData;
     g_modelStreamPtr++;
     g_objDistance = 0;
     advanceModelPointerLod();
     if (g_curLod >= 3) {
-        if ((**(char far **)&g_modelStreamPtr & 0x40) != g_modelEvenOddBit)
+        if ((**(char FAR **)&g_modelStreamPtr & 0x40) != g_modelEvenOddBit)
             return;
     }
-    switch ((unsigned)(unsigned char)**(char far **)&g_modelStreamPtr & 0x3f) {
+    switch ((uint16)(uint8) * *(char FAR **)&g_modelStreamPtr & 0x3f) {
     case 0x3e:
         return;
     case 0x3f:
@@ -290,21 +281,21 @@ void drawMapTileObject(char far *modelData, int screenX, int screenY) {
 }
 
 // ==== seg000:0x374a ====
-void drawModelPoint(int x, int y) {
+void drawModelPoint(int16 x, int16 y) {
     g_lineX2 = g_lineX1 = x + g_viewCenterX;
     g_lineY2 = g_lineY1 = -y + g_viewCenterY;
     ++g_modelStreamPtr;
-    gfx_setColor((unsigned char)*g_modelStreamPtr++);
+    gfx_setColor((uint8)*g_modelStreamPtr++);
     drawClipLineGlobal();
 }
 
 // ==== seg000:0x378e ====
-void buildVertexSignMask(int screenX, int screenY) {
-    long bit;
-    int edgeIdx;
+void buildVertexSignMask(int16 screenX, int16 screenY) {
+    int32 bit;
+    int16 edgeIdx;
 
     bit = 1L;
-    g_modelEdgeCount = (int)(unsigned char)(*((*(char far **)&g_modelStreamPtr)++)) & 0x1f;
+    g_modelEdgeCount = (int16)(uint8)(*((*(char far **)&g_modelStreamPtr)++)) & 0x1f;
     g_vtxSignMask.Lo = -1;
     g_vtxSignMask.Hi = -1;
     *(char *)&g_modelWideVtxFlag = (g_modelEdgeCount > 16) ? 1 : 0;
@@ -323,19 +314,15 @@ void buildVertexSignMask(int screenX, int screenY) {
 }
 
 // ==== seg000:0x3816 ====
-void projectModelVertices(int screenX, int screenY) {
-    int vtxIdx;
-    int vtxRef;
-    int packed;
-    int screenVtxX;
-    int screenVtxY;
+void projectModelVertices(int16 screenX, int16 screenY) {
+    int16 vtxIdx, vtxRef, packed, screenVtxX, screenVtxY;
 
-    packed = (int)(unsigned char)**(char far **)&g_modelStreamPtr & 0x80;
-    g_modelVtxCount = (int)(unsigned char)(*(*(char far **)&g_modelStreamPtr)++) & 0x7F;
+    packed = (int16)(uint8) * *(char FAR **)&g_modelStreamPtr & 0x80;
+    g_modelVtxCount = (int16)(uint8)(*(*(char FAR **)&g_modelStreamPtr)++) & 0x7F;
     for (vtxIdx = 0; vtxIdx < g_modelVtxCount; vtxIdx++) {
-        g_modelStreamPtr += (unsigned char)g_modelWideVtxFlag * 2 + 2;
+        g_modelStreamPtr += (uint8)g_modelWideVtxFlag * 2 + 2;
         if (packed != 0) {
-            vtxRef = (int)(unsigned char)(*(*(char far **)&g_modelStreamPtr)++);
+            vtxRef = (int16)(uint8)(*(*(char FAR **)&g_modelStreamPtr)++);
             screenVtxX = (g_replayLog.vertexX[buf3d3_1[vtxRef]] >> g_tileZoomShift) + screenX;
             screenVtxY = (((int16 *)g_modelVertY)[buf3d3_2[vtxRef]] >> g_tileZoomShift) + screenY;
         } else {
@@ -352,12 +339,12 @@ void projectModelVertices(int screenX, int screenY) {
 }
 
 // ==== seg000:0x3922 ====
-int aspectScaleY(int screenY) {
+int16 aspectScaleY(int16 screenY) {
     return screenY - (screenY >> 2);
 }
 
 // ==== seg000:0x3932 ====
-void setup3DTransform(const int16 *model, int angleX, int angleY, int angleZ, int posX, int posY, int posZ, int renderScene) {
+void setup3DTransform(const int16 *model, int16 angleX, int16 angleY, int16 angleZ, int16 posX, int16 posY, int16 posZ, int16 renderScene) {
     setupViewport(model);
     setViewRotation(angleX, angleY, angleZ);
     setViewPosition(posX, posY, posZ);

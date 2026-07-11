@@ -15,11 +15,11 @@
 #include "../src/shared/miscimpl.c"
 
 void doNothing2(const char *msg, int a, int b, int c);
-int loadOverlay(const char *filename);
-int doFcbSearch(void);
+int16 loadOverlay(const char *filename);
+int16 doFcbSearch(void);
 void mystrcat(char *dst, const char *src);
-int mystrlen(const char *s);
-void nearmemset(void *dst, char val, int count);
+int16 mystrlen(const char *s);
+void nearmemset(void *dst, char val, int16 count);
 
 namespace {
 

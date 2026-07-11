@@ -28,7 +28,7 @@ void loadPicFromFileAt(const char *name, int segment, int off, SDL_IOWhence when
 
 // 1e78
 void showPostMissionAwards(void) {
-    int idx;
+    int16 idx;
     awardPage[3] = 0;
     if (commData->trainingFlag != 0)
         goto done;
@@ -56,7 +56,7 @@ void showPostMissionAwards(void) {
         goto show;
     }
     // 1fa8
-    if (((unsigned)gameData->rank < 6) && (promoThresholds[gameData->rank] < gameData->totalScore)) {
+    if (((uint16)gameData->rank < 6) && (promoThresholds[gameData->rank] < gameData->totalScore)) {
         gfx_setFadeSteps(6);
         openShowPic("promo.pic", *awardPage);
         awardColor = 1;

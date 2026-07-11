@@ -11,8 +11,8 @@ typedef struct SDL_IOStream SDL_IOStream;
 int loadF15DgtlBin();
 void setupDac();
 int fixedMulQ14(int a, int b);
-int cosine(int angle);
-int sine(int angle);
+int16 cosine(int16 angle);
+int16 sine(int16 angle);
 void restoreCbreakHandler();
 void runGameLoop();
 void gameMainLoop();
@@ -54,7 +54,7 @@ void far r3d_submitLineFar(long baseXA, long camXA, long camYA,
  * unchanged. The GL backend sets this per scene in gl_beginScene. */
 void r3d_setObjCullWiden(int numX, int denX, int numY, int denY);
 int far drawModelDisplayList();
-int far fillSpanRect(const int16 *dst, int left, int top, int right, int bottom);
+int16 far fillSpanRect(const int16 *dst, int16 left, int16 top, int16 right, int16 bottom);
 int far fillSpanRectImmediate(const int16 *dst, int left, int top, int right, int bottom);
 int far drawClipLineGlobal();
 int far flushSpanDirtyRect();

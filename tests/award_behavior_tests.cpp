@@ -159,13 +159,13 @@ void decodePic(SDL_IOStream *handle, int segment) {
     g_lastDecodeOffset = SDL_TellIO(handle);
 }
 
-void drawStringCentered(int16 *, const char *str, int startX, int y, int endX) {
+void drawStringCentered(int16 *, const char *str, int16 startX, int16 y, int16 endX) {
     g_textCalls.push_back({str, startX, y, endX});
 }
 
 void waitForKeyOrJoy(void) { ++g_waitKeyCalls; }
 
-void clearRect(int16 *, int x1, int y1, int x2, int y2) {
+void clearRect(int16 *, int16 x1, int16 y1, int16 x2, int16 y2) {
     ++g_clearCalls;
     g_lastClearX1 = x1;
     g_lastClearY1 = y1;

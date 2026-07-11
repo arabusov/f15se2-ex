@@ -36,20 +36,18 @@ void initFrameRandom();
 void generateRandomRadioMessage();
 void findWaypointFeatures();
 void moveStuff();
-void moveNearFar(void *nearPtr, int count);
-int setCommWorldbufPtr();
+void moveNearFar(void *nearPtr, int16 count);
+int16 setCommWorldbufPtr();
 
 // ==== seg000:0x0720 ====
 void updateFrame(void) {
-    int tmp;
-    int unused;
+    int16 tmp, unused;
     uint16 val;
     uint16 screenY;
-    int i;
-    int objIdx;
+    int16 i, objIdx;
 
-    g_viewX_ = (int)((g_ViewX + 0x10L) >> 5);
-    g_viewY_ = -((int)((g_ViewY + 0x10L) >> 5) - 0x8000);
+    g_viewX_ = (int16)((g_ViewX + 0x10L) >> 5);
+    g_viewY_ = -((int16)((g_ViewY + 0x10L) >> 5) - 0x8000);
 
     if (g_initPhase == 1) {
         g_playerPlaneFlags = 0;
@@ -86,10 +84,10 @@ void updateFrame(void) {
                                                                                         : -1;
 
         if (((g_planeTable.planes[g_targetSlots[0].viewIndex].flags) & 0x200) != 0) {
-            g_ViewX -= (long)(tmp * 0x80);
+            g_ViewX -= (int32)(tmp * 0x80);
             *(char *)&g_playerPlaneFlags |= 8;
         } else {
-            g_ViewY -= (long)(1800 * g_northSouthSign);
+            g_ViewY -= (int32)(1800 * g_northSouthSign);
         }
         initFrameRandom();
         appendMapEvent(8, 0);
@@ -105,7 +103,7 @@ void updateFrame(void) {
         commData->landingType = 1;
         g_gunAmmo = 1000;
         if (g_missionStatus == 0 || g_autopilotEngaged != 0) {
-            g_northSouthSign = ((unsigned)(g_viewY_ - waypoints[1].mapY) < 0x8000u) ? 1 : -1;
+            g_northSouthSign = ((uint16)(g_viewY_ - waypoints[1].mapY) < 0x8000u) ? 1 : -1;
             g_altitude = 2000;
             g_velocity = 8100;
             g_setThrust = 100;
@@ -120,8 +118,8 @@ void updateFrame(void) {
                         g_simObjects[i].speed = 300;
                         g_simObjects[i].posX = i * 12 + g_viewX_ - 36;
                         g_simObjects[i].posY = g_viewY_ - (i * 0x20 + 150) * g_northSouthSign;
-                        g_simObjects[i].worldX = (long)g_simObjects[i].posX * 32;
-                        g_simObjects[i].worldY = (long)g_simObjects[i].posY * 32;
+                        g_simObjects[i].worldX = (int32)g_simObjects[i].posX * 32;
+                        g_simObjects[i].worldY = (int32)g_simObjects[i].posY * 32;
                         g_simObjects[i].heading.w = g_ourHead + 0x8000;
                     }
                 }
@@ -133,8 +131,8 @@ void updateFrame(void) {
             g_simObjects[1].speed = 700;
             g_wingmanX = g_viewX_;
             g_wingmanY = 80 * g_northSouthSign + g_viewY_;
-            g_simObjects[1].worldX = (long)g_wingmanX * 32;
-            g_simObjects[1].worldY = (long)g_wingmanY * 32;
+            g_simObjects[1].worldX = (int32)g_wingmanX * 32;
+            g_simObjects[1].worldY = (int32)g_wingmanY * 32;
             g_simObjects[1].heading.w = g_ourHead;
         }
         g_northSouthSign = tmp;
@@ -147,12 +145,12 @@ void updateFrame(void) {
     val = clampRange(g_viewX_, 0x100, 0x7e00);
     if (val != g_viewX_) {
         g_viewX_ = val;
-        g_ViewX = (long)val << 5;
+        g_ViewX = (int32)val << 5;
     }
     val = clampRange(g_viewY_, 0x200, 0x7d00);
     if (val != g_viewY_) {
         g_viewY_ = val;
-        g_ViewY = (long)(0x8000 - g_viewY_) << 5;
+        g_ViewY = (int32)(0x8000 - g_viewY_) << 5;
     }
 
     updateThreatSites();
@@ -241,8 +239,8 @@ void updateFrame(void) {
                 g_simObjects[objIdx].posY += ((i + g_closestThreatIndex) & 3) * 0x10;
                 g_simObjects[objIdx].alt = 4;
             }
-            g_simObjects[objIdx].worldX = (long)g_simObjects[objIdx].posX << 5;
-            g_simObjects[objIdx].worldY = (long)g_simObjects[objIdx].posY << 5;
+            g_simObjects[objIdx].worldX = (int32)g_simObjects[objIdx].posX << 5;
+            g_simObjects[objIdx].worldY = (int32)g_simObjects[objIdx].posY << 5;
             g_simObjects[objIdx].heading.w = -randomRange(0x4000);
             g_simObjects[objIdx].spec = g_planeTable.planes[g_closestThreatIndex].flags & 0x400 ? 8 : 11;
             if (g_planeTable.planes[g_closestThreatIndex].flags & 0x100) {
@@ -280,7 +278,7 @@ skip_target_section:
             g_attackRangeX = 0x100;
             g_attackRangeY = 0x3c0;
             if (g_viewZ == 0x80 && g_knots > 0x50) {
-                if ((unsigned)(g_viewY_ - g_planeTable.planes[g_closestThreatIndex].mapY) * g_northSouthSign >= 0x10 && (unsigned)(g_viewY_ - g_planeTable.planes[g_closestThreatIndex].mapY) * g_northSouthSign <= 0x14) {
+                if ((uint16)(g_viewY_ - g_planeTable.planes[g_closestThreatIndex].mapY) * g_northSouthSign >= 0x10 && (uint16)(g_viewY_ - g_planeTable.planes[g_closestThreatIndex].mapY) * g_northSouthSign <= 0x14) {
                     if (abs((int16)(g_ourHead - ((1 - g_northSouthSign) << 0xe))) < 0x2000) {
                         g_autoCrashDive = 1;
                         makeSound(22, 2);
@@ -331,8 +329,8 @@ skip_target_section:
         if ((g_landingDoneFlag == 0) && (g_missionStatus == 0) && g_playerPlaneFlags & 0x6000) {
             if (abs(g_viewX_ - g_planeTable.planes[g_closestThreatIndex].mapX) < 0x10 && abs(g_viewY_ - g_planeTable.planes[g_closestThreatIndex].mapY) < 0x10) {
                 g_setThrust = g_velocity = g_altitude = 0;
-                g_ViewX = (long)g_planeTable.planes[g_closestThreatIndex].mapX << 5;
-                g_ViewY = (long)(0x8000 - g_planeTable.planes[g_closestThreatIndex].mapY) << 5;
+                g_ViewX = (int32)g_planeTable.planes[g_closestThreatIndex].mapX << 5;
+                g_ViewY = (int32)(0x8000 - g_planeTable.planes[g_closestThreatIndex].mapY) << 5;
             } else {
                 tempStrcpy("Automatic Landing Engaged");
                 g_autoLandingActive = 1;
@@ -345,8 +343,8 @@ skip_target_section:
                 if (g_altitude < (unsigned)(g_groundAltitude + 5)) {
                     g_altitude = g_groundAltitude + 5;
                 }
-                g_ViewX -= (g_ViewX - ((long)g_planeTable.planes[g_closestThreatIndex].mapX << 5)) / (long)i;
-                g_ViewY -= (g_ViewY - ((long)(0x8000 - g_planeTable.planes[g_closestThreatIndex].mapY) << 5)) / (long)i;
+                g_ViewX -= (g_ViewX - ((int32)g_planeTable.planes[g_closestThreatIndex].mapX << 5)) / (int32)i;
+                g_ViewY -= (g_ViewY - ((int32)(0x8000 - g_planeTable.planes[g_closestThreatIndex].mapY) << 5)) / (int32)i;
             }
         }
     } else {
@@ -427,15 +425,14 @@ skip_autopilot:
 
 // ==== seg000:0x14e8 ====
 void dispatchKeyScancode(void) {
-    int unused0, unused1, unused2, unused3, unused4, unused5, unused6, unused7;
+    int16 unused0, unused1, unused2, unused3, unused4, unused5, unused6, unused7;
     keyDispatch(keyScancode);
 }
 
 // ==== seg000:0x14fc ====
-void countermeasures(int eventType) {
+void countermeasures(int16 eventType) {
     const char *name;
-    int i;
-    int slot;
+    int16 i, slot;
 
     slot = -1;
     if ((g_eventTimers[eventType])-- <= 0) {
@@ -474,7 +471,7 @@ void countermeasures(int eventType) {
 
 // ==== seg000:0x1636 ====
 void tickMessageTimers(void) {
-    int i;
+    int16 i;
     for (i = 0; i < 4; i++) {
         if (mapEvents[i].ttl != 0) {
             (mapEvents[i].ttl)--;
@@ -486,12 +483,7 @@ void tickMessageTimers(void) {
 }
 
 void updateBulletsAndFire(void) {
-    int off;
-    int firing;
-    int unused;
-    int i;
-    int mag;
-    int slot;
+    int16 off, firing, unused, i, mag, slot;
 
     for (i = 0; i < g_bulletTrackCount + 4; i++) {
         off = i * 12;
@@ -535,8 +527,7 @@ done_fire:
 
 // ==== seg000:0x1841 ====
 void updateTracerParticles() {
-    int i;
-    int slot;
+    int16 i, slot;
 
     if (g_smokeSourceIdx != -1) {
         for (i = 0; i < 8; i++) {
@@ -567,7 +558,7 @@ void applyGravityFall() {
 
 // ==== seg000:0x18f6 ====
 void initFrameRandom(void) {
-    int seedSum, unused0, unused1, unused2;
+    int16 seedSum, unused0, unused1, unused2;
 
     seedRng();
     clearStatusPanel();
@@ -588,7 +579,7 @@ void resetSimObjectLocks() {
 
 // ==== seg000:0x19a3 ====
 void initWeaponLoadout() {
-    int i;
+    int16 i;
 
     i = g_gunHits = g_bombDamageMask = 0;
     for (; i < 3; i++) {
@@ -606,8 +597,7 @@ void initWeaponLoadout() {
 
 // ==== seg000:0x1a18 routine_131 ====
 void drawWeaponAmmo() {
-    int x;
-    int i;
+    int16 x, i;
 
     if (g_hudVisible == 0) {
         return;
@@ -621,7 +611,7 @@ void drawWeaponAmmo() {
 }
 
 // ==== seg000:0x1a88 ====
-void drawWeaponSelectMarker(int weaponIdx) {
+void drawWeaponSelectMarker(int16 weaponIdx) {
     if (g_hudVisible == 0) return;
     g_pageFront[2] = 0;
     drawFullscreenLine(g_weaponMarkerBoxX[g_weaponMarkerSel], 196, g_weaponMarkerBoxX[g_weaponMarkerSel] + 6, 196);
@@ -660,15 +650,15 @@ void finalizeMission(int outcome) {
 }
 
 // ==== seg000:0x1bc3 ====
-void scheduleEventCheck(int eventObjIdx, unsigned int priority) {
-    if (priority > (unsigned int)g_directorMode) return;
+void scheduleEventCheck(int16 eventObjIdx, uint16 priority) {
+    if (priority > (uint16)g_directorMode) return;
     if (g_directorEventDeadline != -1) return;
     g_viewTargetObj = eventObjIdx;
     scheduleTimedEvent(0x89, g_directorMode == 1 ? 3 : 4);
 }
 
 // ==== seg000:0x1bfd scheduleTimedEvent ====
-void scheduleTimedEvent(int keyVal, int delay) {
+void scheduleTimedEvent(int16 keyVal, int16 delay) {
     if (g_directorMode == 0) {
         return;
     }
@@ -678,7 +668,7 @@ void scheduleTimedEvent(int keyVal, int delay) {
 
 // ==== seg000:0x1c21 routine_180 ====
 void generateRandomRadioMessage(void) {
-    int idx;
+    int16 idx;
 
     if (g_directorEventDeadline != -1) {
         return;
@@ -711,13 +701,13 @@ void generateRandomRadioMessage(void) {
 }
 
 // ==== seg000:0x1d10 ====
-void appendMapEvent(int eventType, int eventArg) {
+void appendMapEvent(int16 eventType, int16 eventArg) {
     if (g_eventLogCount >= 255) {
         return;
     }
     g_replayLog.events[g_eventLogCount].coord = g_missionTick;
-    g_replayLog.events[g_eventLogCount].screenX = (unsigned)g_viewX_ >> 7;
-    g_replayLog.events[g_eventLogCount].screenY = (unsigned)g_viewY_ >> 7;
+    g_replayLog.events[g_eventLogCount].screenX = (uint16)g_viewX_ >> 7;
+    g_replayLog.events[g_eventLogCount].screenY = (uint16)g_viewY_ >> 7;
     g_replayLog.events[g_eventLogCount].type = eventType;
     g_replayLog.events[g_eventLogCount].arg = eventArg;
     g_eventLogCount++;
@@ -725,7 +715,7 @@ void appendMapEvent(int eventType, int eventArg) {
 }
 
 // ==== seg000:0x1d6e placeString ====
-void placeString(int waypointIdx) {
+void placeString(int16 waypointIdx) {
     strcpy(strBuf, g_targetNameTable[(g_planeTable.planes[waypointIdx].nameIndex) & 0x7f]);
     if (strlen(g_targetNameTable[((int16 *)&g_planeTable)[waypointIdx * 8]])) {
         if (strlen(g_targetNameTable[(g_planeTable.planes[waypointIdx].nameIndex) & 0x7f])) {
@@ -733,7 +723,7 @@ void placeString(int waypointIdx) {
         }
         strcat(strBuf, g_targetNameTable[((int16 *)&g_planeTable)[waypointIdx * 8]]);
     }
-    if ((int)strlen(strBuf) > 25) {
+    if ((int16)strlen(strBuf) > 25) {
         g_strTruncDot = '.';
         g_strTruncTerm[0] = 0;
     }
@@ -741,7 +731,7 @@ void placeString(int waypointIdx) {
 
 // ==== seg000:0x1e0e ====
 void initMissionStrings() {
-    int nameIdx, i;
+    int16 nameIdx, i;
     worldImportToEgame();
     g_targetNameTable[0] = g_stringPool;
     nameIdx = 1;
@@ -763,15 +753,14 @@ void initMissionStrings() {
 
 // ==== seg000:0x1f3e ====
 void findWaypointFeatures() {
-    int nameIdx;
-    int slot;
+    int16 nameIdx, slot;
 
     nameIdx = size3d3;
     for (slot = 0; slot < 2; slot++) {
         if (g_targetSlots[slot].flags >> 8 != 0) {
             g_nearestTileObj = findNearestTileObject(
-                (unsigned long)(unsigned)g_planeTable.planes[g_targetSlots[slot].planeIndex].mapX << 5,
-                (0x8000L - (unsigned long)(unsigned)g_planeTable.planes[g_targetSlots[slot].planeIndex].mapY) << 5);
+                (uint32)(uint16)g_planeTable.planes[g_targetSlots[slot].planeIndex].mapX << 5,
+                (0x8000L - (uint32)(uint16)g_planeTable.planes[g_targetSlots[slot].planeIndex].mapY) << 5);
             if (g_nearestTileObj != 0) {
                 g_shapeTargetCategory[nameIdx] = g_shapeTargetCategory[g_nearestTileObj->id];
                 strcpy(g_targetNameTable[nameIdx], g_targetNameTable[g_nearestTileObj->id]);

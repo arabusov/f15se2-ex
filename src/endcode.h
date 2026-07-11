@@ -1,8 +1,8 @@
 #ifndef F15_SE2_ENDCODE
 #define F15_SE2_ENDCODE
-/* assembly routines in endcode.asm called from C */
 #include "inttype.h"
 #include <dos.h>
+/* assembly routines in endcode.asm called from C */
 
 typedef struct SDL_IOStream SDL_IOStream;
 
@@ -11,7 +11,7 @@ void dos_printstring(const char *str);
 SDL_IOStream *createFile(const char *name, int mode);
 extern void far pollJoystick(void);
 void drawLineWrapper(void);
-void clearRect(int16 *page, int y1, int x1, int x2, int y2);
+void clearRect(int16 *page, int16 y1, int16 x1, int16 x2, int16 y2);
 void mystrcat(char *dst, const char *src);
 void decodePicRaw(SDL_IOStream *handle, int segment);
 extern void far copyJoystickData(uint8 far *data);

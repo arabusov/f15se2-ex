@@ -7,11 +7,11 @@ void clearKeybuf(void);
 void waitMdaCgaStatus(int16 iter);
 void showPic640(const char *filename);
 void missionSelect(void);
-int askRepeatMission(void);
+int16 askRepeatMission(void);
 void checkDiskA(void);
 void missionDecode(void);
 void printMission(void);
-int pollMenuInput();
+int16 pollMenuInput();
 
 /* End the HD briefing scene: stop recording text, drop the recorder + repaint hook.
  * Call once the briefing board is no longer shown (START handing off to EGAME). */

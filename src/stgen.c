@@ -21,14 +21,14 @@
 
 /* Private helpers for this translation unit. */
 void runGenerator();
-int findOrPlaceItem(int, int, int);
-int itemDistance(int, int);
-void positionUnit(int, int);
-int approxDistance(int, int);
+int16 findOrPlaceItem(int16, int16, int16);
+int16 itemDistance(int16, int16);
+void positionUnit(int16, int16);
+int16 approxDistance(int16, int16);
 void parseWorld(const char *);
-int calcBearing(int, int);
+int16 calcBearing(int16, int16);
 char *formatGridRef(int16, int16, int16);
-int clampValue(int, int, int);
+int16 clampValue(int16, int16, int16);
 
 void missionGenerate() {
     difficultySaved = gameData->difficulty;
@@ -41,25 +41,10 @@ void missionGenerate() {
 }
 
 void runGenerator() {
-    int attempt;
-    int totalDist;
-    int bearing;
-    int missionBits;
-    int i;
-    int waypointIdx;
-    int baseBearing;
-    int randChoice;
-    int16 swapTmp;
-    int16 maxRange;
-    int minDist;
-    int unitType;
-    int16 randIdx;
+    int16 attempt, totalDist, bearing, missionBits, i, waypointIdx, baseBearing, randChoice;
+    int16 swapTmp, maxRange, minDist, unitType, randIdx;
     int16 baseDist[4];
-    int16 randY;
-    int idx;
-    int matchCount;
-    int slot;
-    int retryCount;
+    int16 randY, idx, matchCount, slot, retryCount;
 
     attempt = missionDistAccum = 0;
     minDist = 250;
@@ -196,8 +181,8 @@ counterMore1k:
     baseXPrecise = (uint32)(worldObjects[targets[0].baseIdx].x_coord) << WORLD_COORD_SHIFT;
     /*
     Assigns the following values to made-up stack variables:
-    var_34 = (long)((word_1C830 & 0x200) ? 0 : 0x708);
-    var_30 = 0x8000 - (long)word_1C82C;
+    var_34 = (int32)((word_1C830 & 0x200) ? 0 : 0x708);
+    var_30 = 0x8000 - (int32)word_1C82C;
     example step-through values:
     1) DX:AX = 0:0708 (1800)
        BX:CX = 0:42c0 (17088)
@@ -315,8 +300,8 @@ counterMore1k:
     missionDistAccum -= (missionBits + missionDistAccum) % 150;
 }
 
-int findOrPlaceItem(int wx, int wy, int slot) {
-    int objIdx;
+int16 findOrPlaceItem(int16 wx, int16 wy, int16 slot) {
+    int16 objIdx;
     if ((nearestTerrainResult = findNearestTerrain((int32)wx << WORLD_COORD_SHIFT, (0x8000 - (int32)wy) << WORLD_COORD_SHIFT)) != NULL) {
         wx = nearestTerrainResult->worldX >> WORLD_COORD_SHIFT;
         wy = -((nearestTerrainResult->worldY >> WORLD_COORD_SHIFT) - 0x8000);
@@ -332,18 +317,18 @@ int findOrPlaceItem(int wx, int wy, int slot) {
 }
 
 // debugcom: manhattan distance
-int itemDistance(int idx1, int idx2) {
+int16 itemDistance(int16 idx1, int16 idx2) {
     return approxDistance(worldObjects[idx1].x_coord - worldObjects[idx2].x_coord,
                           worldObjects[idx1].y_coord - worldObjects[idx2].y_coord);
 }
 
-void positionUnit(int unit, int loc) {
-    int planeType;
+void positionUnit(int16 unit, int16 loc) {
+    int16 planeType;
     planeType = flightUnits[unit].planeType;
     flightUnits[unit].x = worldObjects[loc].x_coord + 9;
     flightUnits[unit].y = worldObjects[loc].y_coord - 12;
-    flightUnits[unit].xPrecise = (long)flightUnits[unit].x << WORLD_COORD_SHIFT;
-    flightUnits[unit].yPrecise = (long)flightUnits[unit].y << WORLD_COORD_SHIFT;
+    flightUnits[unit].xPrecise = (int32)flightUnits[unit].x << WORLD_COORD_SHIFT;
+    flightUnits[unit].yPrecise = (int32)flightUnits[unit].y << WORLD_COORD_SHIFT;
     flightUnits[unit].altitude = worldObjects[loc].targetFlags & 0x200 ? 140 : 12;
     flightUnits[unit].maxSpeed = planes[planeType].maxSpeed;
     flightUnits[unit].heading = 0xfc00;
@@ -351,15 +336,15 @@ void positionUnit(int unit, int loc) {
     flightUnits[unit].roll = 0;
     flightUnits[unit].flags |= 0x403;
     flightUnits[unit].waypointIdx = loc;
-    flightUnits[unit].fuel = ((long)planes[planeType].range << 0xd) / flightUnits[unit].maxSpeed;
+    flightUnits[unit].fuel = ((int32)planes[planeType].range << 0xd) / flightUnits[unit].maxSpeed;
 }
 
 // debugcom: custom_manhattan_distance
-int approxDistance(int dx, int dy) {
-    long dist;
+int16 approxDistance(int16 dx, int16 dy) {
+    int32 dist;
     dx = abs16Compat(dx);
     dy = abs16Compat(dy);
-    dist = (dx > dy) ? (long)(dy >> 1) + (long)dx : (long)(dx >> 1) + (long)dy;
+    dist = (dx > dy) ? (int32)(dy >> 1) + (int32)dx : (int32)(dx >> 1) + (int32)dy;
     if (dist > 0x7fff) {
         dist = 0x7fff;
     }
@@ -393,7 +378,7 @@ void parseWorld(const char *filename) {
     }
 }
 
-int calcBearing(int dx, int dy) {
+int16 calcBearing(int16 dx, int16 dy) {
     int16 angle, result;
     int32 ratio;
     int16 divisor, swapped, quotient;
@@ -435,7 +420,7 @@ char *getItemCoordStr(int16 idx) {
 }
 
 char *formatGridRef(int16 wx, int16 wy, int16 theater) {
-    int gridOffX, gridOffY;
+    int16 gridOffX, gridOffY;
     (void)theater;
     switch (gameData->theater) {
     case 0:
@@ -492,14 +477,14 @@ char *formatGridRef(int16 wx, int16 wy, int16 theater) {
     return bufCoordStr;
 }
 
-int clampValue(int val, int lo, int hi) {
+int16 clampValue(int16 val, int16 lo, int16 hi) {
     if (val > hi) return hi;
     if (val >= lo) return val;
     if (val > -16384) return lo;
     return hi;
 }
 
-void buildTargetLabel(int idx) {
+void buildTargetLabel(int16 idx) {
     mystrcpy(todayMissStrBuf, wldOffsets[worldObjects[idx].objectIdx & 0x7f]);
     if (mystrlen(wldOffsets[worldObjects[idx].unitRef]) != 0) {
         if (mystrlen(wldOffsets[worldObjects[idx].objectIdx & 0x7f]) != 0) {

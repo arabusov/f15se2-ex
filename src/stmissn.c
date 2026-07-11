@@ -350,7 +350,7 @@ void animateArm(int a, int b) {
     }
 }
 
-int askRepeatMission() {
+int16 askRepeatMission() {
     char keycode;
     page1Desc.color = COLOR_BRIEF_DESC_HL;
     drawStringCentered(page1NumPtr, "Repeat last mission ? (y/n)", 113, 66, 185);
@@ -458,7 +458,7 @@ printMissionAgain:
     enableHighlight = 1;
 }
 
-int pollMenuInput() {
+int16 pollMenuInput() {
     uint16 key;
     char repeatHold;
     int joy1;

@@ -1,5 +1,6 @@
 #ifndef F15_SE2_EGUI
 #define F15_SE2_EGUI
+#include "inttype.h"
 /* public interface of egui.c */
 
 void drawTacticalMap(char page);

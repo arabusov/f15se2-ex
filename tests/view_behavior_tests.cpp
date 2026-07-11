@@ -7,7 +7,7 @@
 
 // loadColorPalette lives in eg3dview.c; the surrounding render orchestration
 // (render3DView) moved to the r3d backend seam and is no longer isolable here.
-extern void loadColorPalette(int idx);
+extern void loadColorPalette(int16 idx);
 
 namespace {
 

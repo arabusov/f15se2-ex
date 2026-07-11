@@ -832,7 +832,7 @@ void FAR CDECL gfx_switchColor(int16 *pageDesc, int x1, int y1,
  * Called with a PageDesc pointer: word 0 is the page index, word 3 the fill
  * colour. Writes straight into the page's backing SDL surface — the same buffer
  * the pic decoder and blitters target — so no DOS segment is involved. */
-void clearRect(int16 *pageNum, int x1, int y1, int x2, int y2) {
+void clearRect(int16 *pageNum, int16 x1, int16 y1, int16 x2, int16 y2) {
     SDL_Surface *surf = gfx_getPageSurface((int)*pageNum);
     uint8 color = (uint8)pageNum[3];
     uint8 *base;

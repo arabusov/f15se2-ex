@@ -6,15 +6,15 @@
 #include "shared/common.h"
 #include "entext.h"
 
-void drawWrappedText(int16 *page, char *str, unsigned int maxWidth, int x, int y, int lineHeight) {
-    int font;
+void drawWrappedText(int16 *page, char *str, uint16 maxWidth, int16 x, int16 y, int16 lineHeight) {
+    int16 font;
     char *lineStart;
     char *scan;
     int charCount;
     int d;
     char *strBegin;
     int8 running;
-    unsigned int pixWidth;
+    uint16 pixWidth;
     char buf[1000];
 
     strBegin = str;

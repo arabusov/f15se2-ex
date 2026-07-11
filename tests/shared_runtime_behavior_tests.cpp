@@ -73,7 +73,7 @@ void restoreTimerIrqHandler(void) {
     timerHandlerInstalled = 0;
 }
 
-void intDispatch(int intNum, uint8 *inRegs, uint8 *outRegs) {
+void intDispatch(int16 intNum, uint8 *inRegs, uint8 *outRegs) {
     ++g_intDispatchCalls;
     g_lastInterrupt = intNum;
     std::memcpy(g_lastInputRegs, inRegs, sizeof(g_lastInputRegs));

@@ -142,7 +142,7 @@ void mystrcpy(char *dest, const char *source) {
     std::strcpy(dest, source);
 }
 
-void nearmemset(void *dst, char value, int count) {
+void nearmemset(void *dst, char value, int16 count) {
     std::memset(dst, static_cast<unsigned char>(value), count);
 }
 

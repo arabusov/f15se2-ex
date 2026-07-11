@@ -10,7 +10,7 @@
 #include <cstdlib>
 #include <iostream>
 
-extern void srandInit(int seed);
+extern void srandInit(int16 seed);
 extern void enSeedRandom(void);
 
 namespace {

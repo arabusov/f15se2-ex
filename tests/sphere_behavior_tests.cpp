@@ -5,7 +5,7 @@
 #include <cstring>
 #include <iostream>
 
-extern void drawProjectionSphere(int skyColor);
+extern void drawProjectionSphere(int16 skyColor);
 
 namespace {
 

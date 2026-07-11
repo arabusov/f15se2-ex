@@ -21,7 +21,7 @@
 // clearRect is declared per-program (endcode.h/stcode.h) with differing arg
 // names; declare it locally to avoid pulling in a program-specific header. Word
 // 0 of the pageDesc is the page index, word 3 the fill colour.
-void clearRect(int16 *pageDesc, int x1, int y1, int x2, int y2);
+void clearRect(int16 *pageDesc, int16 x1, int16 y1, int16 x2, int16 y2);
 
 namespace {
 

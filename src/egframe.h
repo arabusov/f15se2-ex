@@ -3,16 +3,16 @@
 /* public interface of egframe.c */
 #include "inttype.h"
 
-void countermeasures(int eventType);
+void countermeasures(int16 eventType);
 void resetSimObjectLocks();
 void initWeaponLoadout(void);
 void drawWeaponAmmo();
-void drawWeaponSelectMarker(int weaponIdx);
+void drawWeaponSelectMarker(int16 weaponIdx);
 void finalizeMission(int outcome);
-void scheduleEventCheck(int eventObjIdx, unsigned int priority);
-void scheduleTimedEvent(int keyVal, int delay);
-void appendMapEvent(int eventType, int eventArg);
-void placeString(int waypointIdx);
+void scheduleEventCheck(int16 eventObjIdx, uint16 priority);
+void scheduleTimedEvent(int16 keyVal, int16 delay);
+void appendMapEvent(int16 eventType, int16 eventArg);
+void placeString(int16 waypointIdx);
 void initMissionStrings();
 int objectToScreen(int mapX, int mapY, int16 *outScreenX, int16 *outScreenY);
 int randomRange(int);

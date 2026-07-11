@@ -19,7 +19,7 @@
 #include <string.h>
 
 /* Private helpers for this translation unit. */
-int far transformAndCullObjectFar(int, int, int);
+int FAR transformAndCullObjectFar(int, int, int);
 
 /* Q8 sub-LOD-unit remainder scaleCoordToLod discards (signed, around its
  * round-to-nearest bias). Without it the viewer position feeding the terrain
@@ -116,7 +116,7 @@ static void renderGridTile(int lod, int tileX, int tileY, int gridX, int gridY, 
     }
 }
 
-void projectObjects(int heading, int rangeGate, long worldX, long worldY, long worldZ) {
+void projectObjects(int16 heading, int16 rangeGate, int32 worldX, int32 worldY, int32 worldZ) {
     int gridX;
     int gridY;
     int dirSector;
@@ -175,8 +175,8 @@ void projectObjects(int heading, int rangeGate, long worldX, long worldY, long w
                     if (sampleIdx == 15) {
                         break;
                     }
-                    gridX = *(const int16 *)((const char *)g_dirGridOffsets + sampleIdx * 2 + (unsigned)18 * (unsigned)dirSector);
-                    gridY = *(const int16 *)((const char *)g_dirGridOffsets + sampleIdx * 2 + (unsigned)18 * (unsigned)((dirSector + 2) & 7));
+                    gridX = *(const int16 *)((const char *)g_dirGridOffsets + sampleIdx * 2 + (uint16)18 * (uint16)dirSector);
+                    gridY = *(const int16 *)((const char *)g_dirGridOffsets + sampleIdx * 2 + (uint16)18 * (uint16)((dirSector + 2) & 7));
                     g_objLocalX = fracX - (gridX << 12) - 0x800;
                     g_objLocalY = fracY - (gridY << 12) - 0x800;
                     g_objRenderMode = 7;
@@ -190,12 +190,12 @@ void projectObjects(int heading, int rangeGate, long worldX, long worldY, long w
                     if (g_curLod != 4 && g_detailLevel < 2 && sampleIdx < 4) {
                         goto next_iter;
                     }
-                    if (rangeGate < (int)0xd555) {
+                    if (rangeGate < (int16)0xd555) {
                         gridX = g_neighborSampling.gridX[sampleIdx];
                         gridY = g_neighborSampling.gridY[sampleIdx];
                     } else {
-                        gridX = *(const int16 *)((const char *)g_dirGridOffsets + sampleIdx * 2 + (unsigned)18 * (unsigned)dirSector);
-                        gridY = *(const int16 *)((const char *)g_dirGridOffsets + sampleIdx * 2 + (unsigned)18 * (unsigned)((dirSector + 2) & 7));
+                        gridX = *(const int16 *)((const char *)g_dirGridOffsets + sampleIdx * 2 + (uint16)18 * (uint16)dirSector);
+                        gridY = *(const int16 *)((const char *)g_dirGridOffsets + sampleIdx * 2 + (uint16)18 * (uint16)((dirSector + 2) & 7));
                     }
                     g_objLocalX = fracX - (gridX << 12) - 0x800;
                     g_objLocalY = fracY - (gridY << 12) - 0x800;
@@ -207,12 +207,12 @@ void projectObjects(int heading, int rangeGate, long worldX, long worldY, long w
                     goto next_iter;
                 }
                 if (sampleIdx >= 4 || g_detailLevel >= 2) {
-                    g_objColorBase = (g_detailLevel == 2) ? 0 : ((unsigned char)g_curLod << 8);
+                    g_objColorBase = (g_detailLevel == 2) ? 0 : ((uint8)g_curLod << 8);
                     g_curTileEntry = matrix3dt_2[g_curLod][cell];
                     for (subIdx = 0; subIdx < matrix3dt[g_curLod][cell]; subIdx++) {
                         if (g_curTileEntry->shape & 0x80) {
                             g_modelStreamPtr = g_world3dData + lookupTileEntry(g_curLod, subIdx, tileX + gridX, tileY + gridY);
-                            if (g_modelStreamPtr == (char far *)g_world3dData) {
+                            if (g_modelStreamPtr == (char FAR *)g_world3dData) {
                                 g_modelStreamPtr = g_world3dData + buf3d3[g_curTileEntry->shape & 0x7f];
                             }
                         } else {
@@ -264,7 +264,7 @@ void projectObjects(int heading, int rangeGate, long worldX, long worldY, long w
 // Once implemented, try merging egame2.c + egame1e.c (if register spill doesn't affect codegen)
 
 // ==== seg000:0x26b4 ====
-uint32 scaleCoordToLod(int level, uint32 coord) {
+uint32 scaleCoordToLod(int16 level, uint32 coord) {
     switch (level) {
     case 4:
         return (coord + 0x20) >> 6;

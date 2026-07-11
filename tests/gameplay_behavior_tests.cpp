@@ -15,18 +15,18 @@
 #include <cstring>
 #include <iostream>
 
-extern int computeThreatRangeBearing(int threatX, int threatY, int threatAlt, int threatType,
-                                     int *outBearing, int *outRange);
+extern int16 computeThreatRangeBearing(int16 threatX, int16 threatY, int16 threatAlt, int16 threatType,
+                                     int16 *outBearing, int16 *outRange);
 extern int computeThreatScore(void);
 extern void updateThreatAlert(void);
 extern int samCanAcquireTarget(int slot, int targetX, int targetY, int targetAlt, int mode);
-extern int markTargetReached(int targetIdx);
-extern void appendMapEvent(int eventType, int eventArg);
-extern void scheduleTimedEvent(int keyVal, int delay);
-extern void scheduleEventCheck(int eventObjIdx, unsigned int priority);
-extern void placeString(int waypointIdx);
+extern int16 markTargetReached(int16 targetIdx);
+extern void appendMapEvent(int16 eventType, int16 eventArg);
+extern void scheduleTimedEvent(int16 keyVal, int16 delay);
+extern void scheduleEventCheck(int16 eventObjIdx, uint16 priority);
+extern void placeString(int16 waypointIdx);
 extern void finalizeMission(int outcome);
-extern void buildRangeString(int rangeRaw);
+extern void buildRangeString(int16 rangeRaw);
 extern void applyGravityFall(void);
 extern void tickMessageTimers(void);
 extern void resetSimObjectLocks(void);
@@ -111,8 +111,8 @@ int main() {
     g_viewY_ = 0x3000;
     g_viewZ = 0x1000;
     g_missionStatus = 1;
-    int bearing = 0;
-    int range = 0;
+    int16 bearing = 0;
+    int16 range = 0;
     const int threatType = 4; // SA-10: lethality 320, dangerTier 7
     const int score = computeThreatRangeBearing(0x1C00, 0x3400, 123, threatType, &bearing, &range);
     require(range == (rangeApprox(0x0400, -0x0400) >> 6),

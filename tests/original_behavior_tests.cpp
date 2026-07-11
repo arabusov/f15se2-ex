@@ -21,12 +21,12 @@
 
 extern const int16 g_angleLut[];
 extern int rangeApprox(int deltaX, int deltaY);
-extern int sinMul(int angle, int value);
+extern int16 sinMul(int16 angle, int16 value);
 extern int randomRange(int maxVal);
-extern unsigned signedRatio16(int numerator, int denominator);
+extern uint16 signedRatio16(int16 numerator, int16 denominator);
 extern int valueToAngle(int value);
 extern int complementAngle(int value);
-extern int FAR CDECL hudSine(int angle);
+extern int16 FAR CDECL hudSine(int16 angle);
 extern int FAR CDECL hudPitchScale(int ap);
 extern void applyRotationDelta(const int16 *matA, const int16 *matB);
 extern void computeAttitudeAngles(void);

@@ -20,38 +20,38 @@
 #include <iostream>
 #include <tuple>
 
-extern uint32 scaleCoordToLod(int level, uint32 coord);
+extern uint32 scaleCoordToLod(int16 level, uint32 coord);
 extern int mapXToScreen(int mapX);
 extern int mapYToScreen(int mapY);
 extern int objectToScreen(int mapX, int mapY, int16 *outScreenX, int16 *outScreenY);
-extern void projectWorldToHud(int worldX, int worldY, int worldZ);
-extern long rotateVectorComponent(int axis, int vecX, int vecY, int vecZ);
-extern int computeMapTargetRange(int targetIdx);
-extern int computeSimObjectRange(int objIdx);
-extern int computeTargetBearing(int targetX, int targetY, int wantBearing);
-extern int findWaypointEntry(int mapX, int mapY);
-extern int computeLoftAngle();
-extern int getTargetSymbol(int wpIdx);
-extern int isTargetOverWater(int wpIdx);
+extern void projectWorldToHud(int16 worldX, int16 worldY, int16 worldZ);
+extern int32 rotateVectorComponent(int16 axis, int16 vecX, int16 vecY, int16 vecZ);
+extern int16 computeMapTargetRange(int16 targetIdx);
+extern int16 computeSimObjectRange(int16 objIdx);
+extern int16 computeTargetBearing(int16 targetX, int16 targetY, int16 wantBearing);
+extern int16 findWaypointEntry(int16 mapX, int16 mapY);
+extern int16 computeLoftAngle();
+extern int16 getTargetSymbol(int16 wpIdx);
+extern int16 isTargetOverWater(int16 wpIdx);
 extern void setupViewport(const int16 *rect);
-extern int process3dg(int lod, int col, int row);
-extern void addTileEntry(struct TileObject *rec, int value, char tag);
-extern int lookupTileEntry(int lod, int subIndex, int tileX, int tileY);
-extern void worldToTileIndex(int worldX, int worldY, int *outCol, int *outRow);
-extern void computeTileBounds(int *minTileX, int *maxTileX, int *minTileY, int *maxTileY);
-extern void setViewPosition(int viewX, int viewY, int viewZ);
+extern int16 process3dg(int16 lod, int16 col, int16 row);
+extern void addTileEntry(struct TileObject *rec, int16 value, char tag);
+extern int16 lookupTileEntry(int16 lod, int16 subIndex, int16 tileX, int16 tileY);
+extern void worldToTileIndex(int16 worldX, int16 worldY, int16 *outCol, int16 *outRow);
+extern void computeTileBounds(int16 *minTileX, int16 *maxTileX, int16 *minTileY, int16 *maxTileY);
+extern void setViewPosition(int16 viewX, int16 viewY, int16 viewZ);
 extern struct TileObject *findNearestTileObject(uint32 worldX, uint32 worldY);
 extern int missileTargetCompat(int weaponType, int objIdx);
 extern void projectMapPoint(int mapX, int mapY);
 extern void tempStrcpy(const char *src);
 extern void setTimedMessage(char *message);
-extern void buildVertexSignMask(int screenX, int screenY);
-extern void projectModelVertices(int screenX, int screenY);
-extern int aspectScaleY(int screenY);
-extern int readAxisInput(int axisIdx);
+extern void buildVertexSignMask(int16 screenX, int16 screenY);
+extern void projectModelVertices(int16 screenX, int16 screenY);
+extern int16 aspectScaleY(int16 screenY);
+extern int16 readAxisInput(int16 axisIdx);
 extern int shapeDataOffset(int shapeId);
-extern int sine(int angle);
-extern int cosine(int angle);
+extern int16 sine(int16 angle);
+extern int16 cosine(int16 angle);
 
 extern vtxSignMask_t g_vtxSignMask;
 namespace {
@@ -304,8 +304,8 @@ int main() {
     g_mapOriginX = 120;
     g_mapOriginY = 90;
     g_tileWorldSize = 16;
-    int tileCol = 0;
-    int tileRow = 0;
+    int16 tileCol = 0;
+    int16 tileRow = 0;
     worldToTileIndex(140, 80, &tileCol, &tileRow);
     require(tileCol == ((140 - 100 + 120) / 16) &&
                 tileRow == (((80 - 50) * 4 / 3 + 90) / 16),
@@ -320,10 +320,10 @@ int main() {
     g_mapOriginX = 0;
     g_mapOriginY = 0;
     g_tileWorldSize = 16;
-    int minTileX = -1;
-    int maxTileX = -1;
-    int minTileY = -1;
-    int maxTileY = -1;
+    int16 minTileX = -1;
+    int16 maxTileX = -1;
+    int16 minTileY = -1;
+    int16 maxTileY = -1;
     computeTileBounds(&minTileX, &maxTileX, &minTileY, &maxTileY);
     require(minTileX == 0 && minTileY == 0,
             "computeTileBounds clamps negative minimum tile bounds to zero");

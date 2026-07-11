@@ -19,9 +19,9 @@
 #include <iostream>
 #include <string>
 
-int approxDistance(int dx, int dy);
-int calcBearing(int dx, int dy);
-int clampValue(int val, int lo, int hi);
+int16 approxDistance(int16 dx, int16 dy);
+int16 calcBearing(int16 dx, int16 dy);
+int16 clampValue(int16 val, int16 lo, int16 hi);
 char *formatGridRef(int16 wx, int16 wy, int16 theater);
 
 namespace {
