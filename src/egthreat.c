@@ -128,10 +128,7 @@ void fireGroundThreat(int16 planeIdx) {
                                 slot = (g_missionStatus != 0) ? planeIdx % g_missionStatus : 0;
                                 if (g_projectiles[slot].ttl == 0) {
                                     if (sams[threatType].lockRange > (uint16)range[0]) {
-                                        threatType = threatType;
                                         g_projectiles[slot].mapX = g_planeTable.planes[planeIdx].mapX + 8;
-                                        slot = slot;
-                                        planeIdx = planeIdx;
                                         g_projectiles[slot].mapY = g_planeTable.planes[planeIdx].mapY;
                                         g_projectiles[slot].alt = 0;
                                         g_projectiles[slot].speed = 1;
@@ -294,7 +291,6 @@ void updateObjects(void) {
                     tgtY = g_planeTable.planes[tgtIdx].mapY;
                     tgtZ = clampRange(g_viewZ + 1000, 5000, 20000);
                 set_target_alt:
-                    tgtZ = tgtZ;
                     goto got_target;
                 padlock_target:
                     tgtX = mapEvents[0].mapX;

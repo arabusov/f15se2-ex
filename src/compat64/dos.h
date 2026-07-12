@@ -11,11 +11,9 @@
 #define cdecl
 #define far
 #define near
-#define pascal
 #define FAR
 #define NEAR
 #define CDECL
-#define __cdecl
 #define __far
 
 struct WORDREGS {

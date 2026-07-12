@@ -22,7 +22,7 @@
 #include <string.h>
 
 /* Private helpers for this translation unit. */
-void __cdecl drawCockpit();
+void drawCockpit();
 void runGameSession();
 
 // ==== seg000:0x10 ====

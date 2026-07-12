@@ -23,14 +23,14 @@
 #include <string.h>
 
 /* Private helpers for this translation unit. */
-void __cdecl egDrawStringCentered(int16 *, const char *, int, int, int);
+void egDrawStringCentered(int16 *, const char *, int, int, int);
 void renderHudFrame();
 int mapXToScreen();
 int mapYToScreen();
 void drawMapLine(int x1, int y1, int x2, int y2);
 void drawColorPoint();
 void drawMapPoint(int, int, int);
-void __cdecl drawPanelText(int, const char *, int);
+void drawPanelText(int, const char *, int);
 int readScreenPixel(int screenX, int screenY);
 
 // ==== seg000:0x8e38 ====
