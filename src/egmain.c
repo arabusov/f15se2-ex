@@ -4,6 +4,7 @@
 #include "egdata.h"
 #include "egframe.h"
 #include "egmath.h"
+#include "egtarget.h"
 #include "worldxfer.h"
 #include "egpic.h"
 #include "egtypes.h"
@@ -75,6 +76,8 @@ void drawCockpit() {
             meshSelfTestDone = 1;
             r3dmesh_selfTest();
         }
+        /* World (ground/tile) shapes reload per theater, so refill every mission. */
+        computeHitRadii();
     }
     f15DgtlResult = loadF15DgtlBin();
     g_horizonGroundColor = g_world3dData[47];
