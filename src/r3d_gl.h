@@ -70,6 +70,10 @@ void r3dgl_drawRect(int x0, int y0, int x1, int y1, int color);
 /* Filled convex polygon: `n` (x,y) pairs, scissored to the half-open MFD clip rect. */
 void r3dgl_drawPoly(const short *xy, int n, int color,
                     int clipX0, int clipY0, int clipX1, int clipY1);
+/* Filled quad from 4 float 320-space corners (interleaved x,y), scissored to the
+ * half-open clip rect. Cell-corner convention (no +0.5), matching r3dgl_drawPoint's
+ * footprint — used for rotated, sub-grid HUD label texels. */
+void r3dgl_drawQuadF(const float *xy, int color, int cx0, int cy0, int cx1, int cy1);
 /* Sub-pixel radar/MFD line: fractional endpoints, ends cut by a scissor at the
  * half-open clip rect (cx0,cy0)-(cx1,cy1). */
 void r3dgl_drawScopeLine(float x1, float y1, float x2, float y2, int color,

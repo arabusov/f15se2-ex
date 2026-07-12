@@ -186,6 +186,12 @@ void r2d_submitScopeLine(float x1, float y1, float x2, float y2, int color,
 void r2d_submitPoly(const short *xy, int n, int color,
                     int clipX0, int clipY0, int clipX1, int clipY1);
 
+/* Submit a filled quad from 4 float 320-space corners (interleaved x,y), scissored
+ * to the half-open clip rect. GL-only (records a native-res fill); a no-op off a
+ * vector frame. Used for rotated, sub-grid HUD label texels (the software backend
+ * keeps upright integer glyphs). */
+void r2d_submitQuadF(const float *xy, int color, int cx0, int cy0, int cx1, int cy1);
+
 /* The software backend (gfx_impl.c) registers how it rasterizes a submitted
  * line/point into the page, so r2d need not own page state. */
 void r2d_registerSoftwarePrims(void (*line)(int x1, int y1, int x2, int y2, int color),

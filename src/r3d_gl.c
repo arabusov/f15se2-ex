@@ -1664,6 +1664,25 @@ void r3dgl_drawPoly(const short *xy, int n, int color,
     glDisable(GL_SCISSOR_TEST);
 }
 
+/* Fill one float-cornered quad (a rotated, sub-grid font texel of a HUD label),
+ * scissored to the half-open clip rect. Cell-corner convention (no +0.5), matching
+ * r3dgl_drawPoint's virtual-pixel footprint so rotated labels sit on their lines. */
+void r3dgl_drawQuadF(const float *xy, int color, int cx0, int cy0, int cx1, int cy1) {
+    SDL_Palette *pal = gfx_getPalette();
+    SDL_Color c;
+    int k;
+    if (!pal) return;
+    c = pal->colors[color & 0xff];
+    overlay2DState();
+    ovClipScissor(cx0, cy0, cx1, cy1);
+    glColor3ub(c.r, c.g, c.b);
+    glBegin(GL_QUADS);
+    for (k = 0; k < 4; k++)
+        glVertex2f(ovMapX(xy[k * 2]), ovMapY(xy[k * 2 + 1]));
+    glEnd();
+    glDisable(GL_SCISSOR_TEST);
+}
+
 /* Radar/MFD line with fractional endpoints (no whole-pixel wobble); its ends are
  * cut by a GL scissor at the true MFD edge (cx0,cy0)-(cx1,cy1) rather than a
  * geometry clip — a crisp screen-edge cut, not a slanted butt-cap short of it.

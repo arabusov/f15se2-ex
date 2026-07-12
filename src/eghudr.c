@@ -34,6 +34,13 @@ extern int16 g_tapeCursorX;
 extern int FAR CDECL hudPitchScale(int ap);
 extern void FAR CDECL hudComplex(int16 bx, int16 dx, int16 cx, int16 si);
 extern void FAR CDECL hudRotateLadder(int16 di);
+extern void FAR hudRotateLadderF(int16 di, float dyFrac, float *outX, float *outY);
+extern void FAR hudLabelBasis(float *exX, float *exY, float *eyX, float *eyY);
+
+/* Sub-pixel rotated pitch-ladder vertices for the native-res overlay path (filled
+ * by hudRotateLadderF; indexed by vertex, di>>1). ~30 vertices max (5 rungs x <=6). */
+static float g_ladderFx[64];
+static float g_ladderFy[64];
 
 /* cdecl->register shim (egregsh.asm) for MGRAPHIC's clipped glyph engine
  * (register-called slots 0x01-0x06): BP=descriptor, BX=string. The slot index
@@ -100,6 +107,45 @@ static void drawLine(int16 x1, int16 y1, int16 x2, int16 y2) {
 }
 static void drawTapeStr(int16 *d, const uint8 *s, int16 slot) {
     gfx_drawGlyphStr(d, (const char *)s, slot);
+}
+
+/* Native-res sub-pixel submission of one pitch-ladder (steep climb/dive) rung
+ * segment: fold in the ladder's blit-offset viewport origin and draw offset, then
+ * submit float endpoints to the GL overlay clipped to the ladder window (the same
+ * region drawClipLineGlobal + the g_pitchBlitOfs origin produce). Mirrors
+ * drawHudViewLineF; the software path stays on drawClipLineGlobal. Colour 7 matches
+ * the setFill(7) the rungs draw with. */
+/* Advance width of a label string in font `fontIdx` (sums the per-char metric the
+ * glyph engine itself advances by), for right-aligning the rotated GL labels. */
+static float glyphStrWidthF(const uint8 *s, int fontIdx) {
+    int w = 0, i;
+    for (i = 0; i < 4 && s[i] != 0; i++) w += gfx_setFont(s[i], (uint16)fontIdx);
+    return (float)w;
+}
+
+/* One rotated pitch-ladder label (GL native-res path): place `str` in the rung's own
+ * rotated frame at the float end vertex (vx,vy) — `side` -1 = left end (text
+ * right-aligned a gap before the vertex), +1 = right end (a gap past it) — vertically
+ * centred on the line. Replaces the DOS g_timerTickByte roll-offset tables, whose
+ * integer 64-bucket curves place UPRIGHT text and step ~1px as roll sweeps; the
+ * analytic basis placement is continuous and rotates with the rung. */
+static void drawPitchLabelRot(const uint8 *str, float vx, float vy,
+                              float exX, float exY, float eyX, float eyY, int side,
+                              int cx0, int cy0, int cx1, int cy1) {
+    int font = g_tapeText2[6];
+    float along = (side < 0) ? -(glyphStrWidthF(str, font) + 2.0f) : 2.0f;
+    float fx = vx + g_pitchLabelX + exX * along - eyX * 2.0f;
+    float fy = vy + g_pitchLabelY + exY * along - eyY * 2.0f;
+    gfx_drawGlyphStrRot((const char *)str, font, g_tapeText2[2], fx, fy,
+                        exX, exY, eyX, eyY, cx0, cy0, cx1, cy1);
+}
+
+static void submitPitchRungF(float x1, float y1, float x2, float y2) {
+    int vx = (uint16)g_pitchBlitOfs % 320;
+    int vy = (uint16)g_pitchBlitOfs / 320;
+    r2d_submitScopeLine(x1 + g_pitchDrawX + vx, y1 + g_pitchDrawY + vy,
+                        x2 + g_pitchDrawX + vx, y2 + g_pitchDrawY + vy, 7,
+                        vx, vy, g_pitchClipMaxX + vx + 1, g_pitchClipMaxY + vy + 1, 1.0f);
 }
 
 /* ===== setupInstrumentLayout ===== */
@@ -408,13 +454,22 @@ static void drawInstrumentGauges(void) {
     /* ---- pitch ladder ---- */
     {
         int16 pitch = g_ourPitch;
-        uint16 ap = (uint16)(pitch < 0 ? -pitch : pitch);
+        uint16 apFull = (uint16)(pitch < 0 ? -pitch : pitch); /* full-precision |pitch| */
+        uint16 ap = apFull >> 6;
+        uint16 tScale = (uint16)hudPitchScale(ap);
         uint16 t;
         int16 subY;
-        ap >>= 6;
-        t = (uint16)hudPitchScale(ap);
-        ch = (t / 40) & 0xff; /* centre rung index */
-        t = (uint16)((t % 40) * (uint8)g_pitchRungVStep);
+        int vectorLadder = r2d_vectorActive();
+        /* Sub-pixel vertical-scroll offset the DOS integer path drops to the >>6 /
+         * >>8 / /40 truncations, folded into the native-res rungs so the steep
+         * climb/dive ladder glides instead of snapping in ~2px steps (same
+         * sub-pixel-vector fix as the target box / scope lines). tScale untruncated
+         * is |pitch|*360/16384; the scroll slope within a rung is rungVStep/40. */
+        float dyFrac = ((float)((uint32)apFull * 360u) / 16384.0f - (float)tScale) *
+                       ((float)g_pitchRungVStep / 40.0f);
+        if (pitch < 0) dyFrac = -dyFrac;
+        ch = (tScale / 40) & 0xff; /* centre rung index */
+        t = (uint16)((tScale % 40) * (uint8)g_pitchRungVStep);
         subY = (int16)(t / 40);
         if (pitch < 0) subY = (uint8)g_pitchRungVStep - subY;
         subY = (uint8)(subY + g_pitchCenterY);
@@ -553,7 +608,10 @@ static void drawInstrumentGauges(void) {
         di -= 2;
 
         /* rotate the built ladder vertices by roll (32-bit math, so done in the
-         * _TEXT helper hudRotateLadder where the C runtime helpers are near). */
+         * _TEXT helper hudRotateLadder where the C runtime helpers are near). The
+         * float companion (native-res overlay) rotates the UN-rotated buffer, so it
+         * must run first. */
+        if (vectorLadder) hudRotateLadderF(di, dyFrac, g_ladderFx, g_ladderFy);
         hudRotateLadder(di);
 
         /* draw the rotated segments (unless the high-G blackout is active) */
@@ -568,11 +626,17 @@ static void drawInstrumentGauges(void) {
             si = 0;
             g_tapeColumn = 0;
             for (;;) {
-                g_lineX1 = W16(g_compassTapeBuf + 0xec + di) + g_pitchDrawX;
-                g_lineY1 = W16(g_compassTapeBuf + 0x15c + di) + g_pitchDrawY;
-                g_lineX2 = W16(g_compassTapeBuf + 0xee + di) + g_pitchDrawX;
-                g_lineY2 = W16(g_compassTapeBuf + 0x15e + di) + g_pitchDrawY;
-                drawClipLineGlobal();
+                if (vectorLadder) {
+                    /* sub-pixel native-res rung (di>>1 = current vertex index) */
+                    submitPitchRungF(g_ladderFx[di >> 1], g_ladderFy[di >> 1],
+                                     g_ladderFx[(di >> 1) + 1], g_ladderFy[(di >> 1) + 1]);
+                } else {
+                    g_lineX1 = W16(g_compassTapeBuf + 0xec + di) + g_pitchDrawX;
+                    g_lineY1 = W16(g_compassTapeBuf + 0x15c + di) + g_pitchDrawY;
+                    g_lineX2 = W16(g_compassTapeBuf + 0xee + di) + g_pitchDrawX;
+                    g_lineY2 = W16(g_compassTapeBuf + 0x15e + di) + g_pitchDrawY;
+                    drawClipLineGlobal();
+                }
                 di += 2;
                 g_tapeColumn++;
                 if (--g_compassTapeBuf[0x1cc + si] != 0) continue;
@@ -604,7 +668,17 @@ static void drawInstrumentGauges(void) {
                 g_tapeRollOfsB3 = W16(g_timerTickByte + 0x19a + di);
             }
             {
+                /* Rotated sub-grid label geometry (GL native-res path): the roll
+                 * basis so labels rotate with the rungs, and the glyph clip window
+                 * (g_tapeText2's two X / two Y bounds, normalised half-open). */
+                float exX = 1.0f, exY = 0.0f, eyX = 0.0f, eyY = 1.0f;
+                int lcx0, lcy0, lcx1, lcy1;
                 int16 seg = 5;
+                if (vectorLadder) hudLabelBasis(&exX, &exY, &eyX, &eyY);
+                lcx0 = (g_tapeText2[9] < g_tapeText2[10]) ? g_tapeText2[9] : g_tapeText2[10];
+                lcx1 = ((g_tapeText2[9] > g_tapeText2[10]) ? g_tapeText2[9] : g_tapeText2[10]) + 1;
+                lcy0 = (g_tapeText2[7] < g_tapeText2[8]) ? g_tapeText2[7] : g_tapeText2[8];
+                lcy1 = ((g_tapeText2[7] > g_tapeText2[8]) ? g_tapeText2[7] : g_tapeText2[8]) + 1;
                 for (;;) {
                     int16 idx4, vi, ax;
                     /* first (B) label */
@@ -616,13 +690,19 @@ static void drawInstrumentGauges(void) {
                         g_tapeDrawStr[0] = 0;
                     }
                     vi = W16(g_compassTapeBuf + 0x1e8 + si) & 0xff;
-                    ax = W16(g_compassTapeBuf + 0xec + vi);
-                    ax += (idx4 >= 0x2c) ? g_tapeRollOfsB0 : g_tapeRollOfsB2;
-                    g_tapeText2[4] = ax + g_pitchLabelX;
-                    ax = W16(g_compassTapeBuf + 0x15c + vi);
-                    ax += (vi >= 0x2c) ? g_tapeRollOfsB1 : g_tapeRollOfsB3;
-                    g_tapeText2[5] = ax + g_pitchLabelY;
-                    drawTapeStr(g_tapeText2, g_tapeDrawStr, 0x06);
+                    if (vectorLadder) {
+                        /* left rung end: rotated label, right-aligned before it */
+                        drawPitchLabelRot(g_tapeDrawStr, g_ladderFx[vi >> 1], g_ladderFy[vi >> 1],
+                                          exX, exY, eyX, eyY, -1, lcx0, lcy0, lcx1, lcy1);
+                    } else {
+                        ax = W16(g_compassTapeBuf + 0xec + vi);
+                        ax += (idx4 >= 0x2c) ? g_tapeRollOfsB0 : g_tapeRollOfsB2;
+                        g_tapeText2[4] = ax + g_pitchLabelX;
+                        ax = W16(g_compassTapeBuf + 0x15c + vi);
+                        ax += (vi >= 0x2c) ? g_tapeRollOfsB1 : g_tapeRollOfsB3;
+                        g_tapeText2[5] = ax + g_pitchLabelY;
+                        drawTapeStr(g_tapeText2, g_tapeDrawStr, 0x06);
+                    }
                     si++;
                     /* second (A) label */
                     idx4 = g_tapeCursorX * 4;
@@ -633,13 +713,19 @@ static void drawInstrumentGauges(void) {
                         g_tapeDrawStr[0] = 0;
                     }
                     vi = W16(g_compassTapeBuf + 0x1e8 + si) & 0xff;
-                    ax = W16(g_compassTapeBuf + 0xec + vi);
-                    ax += (idx4 >= 0x2c) ? g_tapeRollOfsA0 : g_tapeRollOfsA2;
-                    g_tapeText2[4] = ax + g_pitchLabelX;
-                    ax = W16(g_compassTapeBuf + 0x15c + vi);
-                    ax += (vi >= 0x2c) ? g_tapeRollOfsA1 : g_tapeRollOfsA3;
-                    g_tapeText2[5] = ax + g_pitchLabelY;
-                    drawTapeStr(g_tapeText2, g_tapeDrawStr, 0x06);
+                    if (vectorLadder) {
+                        /* right rung end: rotated label, a gap past it */
+                        drawPitchLabelRot(g_tapeDrawStr, g_ladderFx[vi >> 1], g_ladderFy[vi >> 1],
+                                          exX, exY, eyX, eyY, 1, lcx0, lcy0, lcx1, lcy1);
+                    } else {
+                        ax = W16(g_compassTapeBuf + 0xec + vi);
+                        ax += (idx4 >= 0x2c) ? g_tapeRollOfsA0 : g_tapeRollOfsA2;
+                        g_tapeText2[4] = ax + g_pitchLabelX;
+                        ax = W16(g_compassTapeBuf + 0x15c + vi);
+                        ax += (vi >= 0x2c) ? g_tapeRollOfsA1 : g_tapeRollOfsA3;
+                        g_tapeText2[5] = ax + g_pitchLabelY;
+                        drawTapeStr(g_tapeText2, g_tapeDrawStr, 0x06);
+                    }
                     si++;
                     g_tapeCursorX++;
                     if (--seg == 0) break;

@@ -81,6 +81,14 @@ void FAR CDECL gfx_blitVariant(int16 *params, const char *string);            /*
 void FAR CDECL gfx_copyBlock(int16 *params, const char *string);              /* slot 0x04: glyph blit core (no clip) */
 void FAR CDECL gfx_drawString(int16 *pageNum, const char *string);            /* slot 0x05: draw clipped string */
 void FAR CDECL gfx_drawStringUnclipped(int16 *params, const char *string);    /* slot 0x06: draw string (both clip windows) */
+/* Rotated, sub-grid HUD label for the GL native-res overlay (no-op on software).
+ * (ax,ay) float anchor = string top-left in absolute 320-space; (exX,exY)/(eyX,eyY)
+ * are the per-column / per-row 320-space basis vectors (rotation + aspect); scissored
+ * to the half-open clip rect. Used for the rotating pitch-ladder climb/dive labels. */
+void FAR gfx_drawGlyphStrRot(const char *string, int fontIdx, int color,
+                             float ax, float ay, float exX, float exY,
+                             float eyX, float eyY,
+                             int cx0, int cy0, int cx1, int cy1);
 void FAR CDECL gfx_complexRender(int bxArg, int dxArg, int cxArg, int siArg); /* slot 0x0b: HUD pitch-ladder renderer */
 /* Writable pixels + stride of a page (its surface is the single back buffer), for
  * the egame HUD primitives that fill the page directly (eghudr fillSpanRect). */

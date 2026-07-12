@@ -23,6 +23,7 @@
 #include "gfx.h"
 #include "r2d.h"
 #include <dos.h>
+#include <math.h>
 
 #define W16(p) rdI16(p)            /* unaligned-safe 16-bit read */
 #define W16W(p, v) wrI16((p), (v)) /* unaligned-safe 16-bit write */
@@ -40,6 +41,15 @@ static int16 nsine(int16 angle) {
 }
 
 int16 FAR CDECL hudSine(int16 angle) { return nsine(angle); }
+
+/* Vertical gain that makes the GL pitch ladder a RIGID on-screen rotation. The ladder
+ * transform squashes Y by 3/4 (= 3/131072 vs 1/32768 in X); the 2D present then
+ * stretches Y by parY = (320/200)/(4:3) = 1.2. The DOS product is 0.75*1.2 = 0.9 — a
+ * rotation-plus-squash, so a local right angle (rung vs its bend tick) shears off
+ * perpendicular, worsening with roll. Using 1/parY here makes the net gain 1.0, so
+ * the bends stay square at any roll. Software keeps the DOS 3/4 (hudRotateLadder). */
+static const float LADDER_ASPECT =
+    (float)LOGICAL_HEIGHT / (float)LOGICAL_WIDTH * TARGET_DAR; /* = 1/1.2 */
 
 /* pitch -> ladder pixel offset: (|pitch|>>6) * 360, taking the high bytes. */
 int FAR CDECL hudPitchScale(int ap) {
@@ -186,4 +196,43 @@ void FAR CDECL hudRotateLadder(int16 di) {
         W16W(g_compassTapeBuf + 0xec + di, nx);
         W16W(g_compassTapeBuf + 0x15c + di, ny);
     }
+}
+
+/* Float companion to hudRotateLadder for the GL native-res HUD overlay. Rotates the
+ * built ladder vertices by roll in float (no int16 truncation) and folds the
+ * sub-pixel pitch-scroll offset dyFrac into each vertex's Y, so the steep climb/dive
+ * rungs glide instead of snapping to the 320x200 grid — the same sub-pixel-vector
+ * fix as the target box / scope lines. Reads the UN-rotated buffer, so call it
+ * BEFORE hudRotateLadder overwrites g_compassTapeBuf. Vertex k → outX[k],outY[k].
+ * The arithmetic mirrors hudRotateLadder ((sinR*x)*2>>16 etc.) without the (int16)
+ * truncations, which never wrap for the HUD's small vertex range. */
+void FAR hudRotateLadderF(int16 di, float dyFrac, float *outX, float *outY) {
+    float sinR = (float)nsine((int16)(0x4000 - g_ourRoll));
+    float cosR = (float)nsine((int16)(-g_ourRoll));
+    int16 o;
+    for (o = 0; o <= di; o += 2) {
+        float x = (float)(int16)W16(g_compassTapeBuf + 0xec + o);
+        float y = (float)(int16)W16(g_compassTapeBuf + 0x15c + o) + dyFrac;
+        outX[o >> 1] = (sinR * x - cosR * y) / 32768.0f;
+        /* rigid on screen: LADDER_ASPECT cancels the present's parY (vs the DOS 3/4) */
+        outY[o >> 1] = LADDER_ASPECT * (sinR * y + cosR * x) / 32768.0f;
+    }
+}
+
+/* 320-space text basis for the rotated pitch-ladder labels: ex = unit step per glyph
+ * column, ey = unit step per row. ex follows the rung's on-screen direction from the
+ * ladder transform (a horizontal rung's screen delta is proportional to (sinR,
+ * 0.75*cosR) — the 0.75 is the transform's Y/X gain ratio 3/4), so labels tilt with
+ * (and stay parallel to) the lines; ey is its rigid perpendicular, pointing down at
+ * roll 0. Normalised so glyph texels keep unit (one-320-pixel) size at any roll. */
+void FAR hudLabelBasis(float *exX, float *exY, float *eyX, float *eyY) {
+    float sinR = (float)nsine((int16)(0x4000 - g_ourRoll));
+    float cosR = (float)nsine((int16)(-g_ourRoll));
+    float dx = sinR, dy = LADDER_ASPECT * cosR; /* match the rigid line transform */
+    float len = sqrtf(dx * dx + dy * dy);
+    if (len < 1e-3f) len = 1.0f;
+    *exX = dx / len;
+    *exY = dy / len;
+    *eyX = -*exY;
+    *eyY = *exX;
 }

@@ -247,6 +247,12 @@ void r2d_submitRect(int x0, int y0, int x1, int y1, int color) {
     /* else: caller bakes via fillSpanRect (software retained page) */
 }
 
+void r2d_submitQuadF(const float *xy, int color, int cx0, int cy0, int cx1, int cy1) {
+    /* GL vector frame only; the software page has no rotated/sub-grid text path, so
+     * the caller keeps upright integer glyphs there (the DOS look). */
+    if (r2d_vectorActive()) r3dgl_drawQuadF(xy, color, cx0, cy0, cx1, cy1);
+}
+
 /* Cohen-Sutherland clip of an integer segment to the inclusive box [x0,x1]x[y0,y1].
  * Returns 0 if fully outside (nothing to draw). Mirrors the drawClipLineGlobal /
  * gfx_drawLine clippers; used only for the software scope-line fallback. */

@@ -694,6 +694,60 @@ static void drawStringCore(int16 *params, const char *string,
     params[2] = (int16)color;
 }
 
+/* Rotated, sub-grid HUD label (GL native-res overlay only). Draws `string` in font
+ * `fontIdx`/`color` with its glyph grid placed by two basis vectors: (exX,exY) is the
+ * on-screen 320-space step per text column, (eyX,eyY) per row, both emanating from the
+ * float anchor (ax,ay) = the string's top-left in absolute 320-space. Each lit font
+ * texel becomes one rotated parallelogram cell submitted via r2d_submitQuadF, so the
+ * label rotates with (and glides sub-grid along) the pitch-ladder lines instead of
+ * snapping upright to the 320x200 grid. The software backend keeps the upright integer
+ * glyph engine (drawStringCore); this is a no-op there. Scissored to the half-open
+ * clip rect, matching the glyph slot's clip window. */
+void FAR gfx_drawGlyphStrRot(const char *string, int fontIdx, int color,
+                             float ax, float ay, float exX, float exY,
+                             float eyX, float eyY,
+                             int cx0, int cy0, int cx1, int cy1) {
+    uint8 height, rowSize;
+    uint8 *bitmaps;
+    const uint8 *widthTab;
+    int ci, row, col;
+    float penX = 0.0f; /* running text-column offset (in glyph texels) */
+    if (!string) return;
+    fontIdx &= 7;
+    height = g_fontHeightsArr[fontIdx];
+    rowSize = g_fontBitmapRowSize[fontIdx];
+    bitmaps = g_fontBitmapPtrs[fontIdx];
+    widthTab = g_fontWidthTables[fontIdx];
+    if (!bitmaps) return;
+    for (ci = 0; string[ci] != 0 && ci < 256; ci++) {
+        uint8 ch = (uint8)string[ci];
+        if (ch & 0x80) { color = ch & 0x7F; continue; } /* inline colour escape */
+        if (ch >= 0x20) {
+            uint8 *glyph = bitmaps + (ch - 0x20) * (uint16)rowSize;
+            for (row = 0; row < height; row++) {
+                uint8 bits = glyph[row];
+                for (col = 0; col < 8; col++) {
+                    if (bits & 0x80) {
+                        float gx = penX + col, gy = (float)row;
+                        float q[8];
+                        q[0] = ax + gx * exX + gy * eyX;
+                        q[1] = ay + gx * exY + gy * eyY;
+                        q[2] = ax + (gx + 1) * exX + gy * eyX;
+                        q[3] = ay + (gx + 1) * exY + gy * eyY;
+                        q[4] = ax + (gx + 1) * exX + (gy + 1) * eyX;
+                        q[5] = ay + (gx + 1) * exY + (gy + 1) * eyY;
+                        q[6] = ax + gx * exX + (gy + 1) * eyX;
+                        q[7] = ay + gx * exY + (gy + 1) * eyY;
+                        r2d_submitQuadF(q, color, cx0, cy0, cx1, cy1);
+                    }
+                    bits <<= 1;
+                }
+            }
+        }
+        penX += (widthTab && ch >= 0x20) ? widthTab[ch - 0x20] : 8;
+    }
+}
+
 /* ---- Slot 0x05: gfx_drawString (cdecl, unclipped) ---- */
 void FAR CDECL gfx_drawString(int16 *pageNum, const char *string) {
     drawStringCore(pageNum, string, 0, 319, 0, 199);
