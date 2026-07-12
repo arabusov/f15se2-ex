@@ -276,6 +276,12 @@ add_executable(f15se2 ${SRC_DIR}/f15.c)
 set_target_properties(f15se2 PROPERTIES OUTPUT_NAME "f15se2-ex")
 target_link_libraries(f15se2 PRIVATE f15se2_core)
 
+# Strip symbols from Release builds to shrink the binary (GNU/Clang only; MSVC
+# already keeps debug info in a separate .pdb rather than the exe itself).
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_options(f15se2 PRIVATE $<$<CONFIG:Release>:-s>)
+endif()
+
 #==============================================================================
 # Compiler warnings (game code, compiled once into the core library)
 #==============================================================================
