@@ -48,7 +48,7 @@ void keyDispatch(uint16 scanCode) {
             break;
         }
         strcat(strBuf, " range radar");
-        tempStrcpy(strBuf);
+        hudMessage(strBuf);
         break;
     case SCAN_Z:
         zoomIn();
@@ -81,7 +81,7 @@ void keyDispatch(uint16 scanCode) {
         }
         strcpy(strBuf, "Detail Level ");
         strcat(strBuf, itoa(g_detailLevel, g_itoaScratch, 10));
-        tempStrcpy(strBuf);
+        hudMessage(strBuf);
         setupLodDistances();
         break;
     case SCAN_ALT_K:
@@ -90,17 +90,17 @@ void keyDispatch(uint16 scanCode) {
             g_kbdSensitivity = 0;
         strcpy(strBuf, "Kybd Sensitivity");
         strcat(strBuf, itoa(g_kbdSensitivity + 1, g_itoaScratch, 10));
-        tempStrcpy(strBuf);
+        hudMessage(strBuf);
         break;
     case SCAN_ALT_M:
         strcpy(strBuf, "Memory Available:");
         strcat(strBuf, itoa(allocSize, memStr, 10));
-        tempStrcpy(strBuf);
+        hudMessage(strBuf);
         break;
     case SCAN_ALT_F:
         strcpy(strBuf, "Jiffies/Frame ");
         strcat(strBuf, itoa(g_jiffiesPerFrame, g_itoaScratch, 10));
-        tempStrcpy(strBuf);
+        hudMessage(strBuf);
         break;
     case SCAN_ALT_A:
         /* ALT+A: toggle ACCEL (the "ACCEL" HUD tag, egtacmap.c). Originally this
@@ -120,7 +120,7 @@ void keyDispatch(uint16 scanCode) {
         g_axisInputAccum[2] = (g_axisInputAccum[2] + 1) & 3;
         strcpy(strBuf, "Sounds ");
         strcat(strBuf, itoa(3 - g_axisInputAccum[2], g_itoaScratch, 10));
-        tempStrcpy(strBuf);
+        hudMessage(strBuf);
         updateEngineSound();
         break;
     case SCAN_ALT_N:
@@ -165,7 +165,7 @@ void keyDispatch(uint16 scanCode) {
         } else {
             strcat(strBuf, "off");
         }
-        tempStrcpy(strBuf);
+        hudMessage(strBuf);
         break;
     case SCAN_W:
         waypointIndex++;
@@ -173,13 +173,13 @@ void keyDispatch(uint16 scanCode) {
             waypointIndex = 1;
         switch (waypointIndex) {
         case 1:
-            tempStrcpy("Waypoint: Primary Target");
+            hudMessage("Waypoint: Primary Target");
             break;
         case 2:
-            tempStrcpy("Waypoint: Secondary Target");
+            hudMessage("Waypoint: Secondary Target");
             break;
         case 3:
-            tempStrcpy("Waypoint: Friendly Airbase");
+            hudMessage("Waypoint: Friendly Airbase");
             g_targetSlots[1].viewIndex = g_closestThreatIndex;
             break;
         }
@@ -187,10 +187,10 @@ void keyDispatch(uint16 scanCode) {
     case SCAN_P:
         if (g_autopilotAltitude != 0) {
             g_autopilotAltitude = 0;
-            tempStrcpy("Autopilot off");
+            hudMessage("Autopilot off");
         } else {
             g_autopilotAltitude = g_viewZ < 1000 ? 1000 : g_viewZ;
-            tempStrcpy("Autopilot on");
+            hudMessage("Autopilot on");
         }
         break;
     case SCAN_T:
@@ -208,42 +208,42 @@ void keyDispatch(uint16 scanCode) {
         g_axisInputAccum[1] = 1;
         break;
     case SCAN_SPACEBAR:
-        keyValue = 0;
+        g_viewMode = VIEW_COCKPIT;
         break;
     case SCAN_F1:
-        keyValue = 0x44;
+        g_viewMode = VIEW_FORWARD;
         break;
     case SCAN_F2:
-        keyValue = 0x42;
+        g_viewMode = VIEW_LEFT;
         break;
     case SCAN_F3:
-        keyValue = 0x43;
+        g_viewMode = VIEW_RIGHT;
         break;
     case SCAN_F4:
-        keyValue = 0x41;
+        g_viewMode = VIEW_REAR;
         break;
     case SCAN_F5:
-        keyValue = 0x87;
+        g_viewMode = VIEW_EXT_FOLLOW;
         break;
     case SCAN_F6:
-        keyValue = 0x84;
+        g_viewMode = VIEW_EXT_DYNAMIC;
         break;
     case SCAN_F7:
-        keyValue = 0x85;
+        g_viewMode = VIEW_EXT_SIDE;
         break;
     case SCAN_F8:
-        keyValue = 0x89;
+        g_viewMode = VIEW_MISSILE;
         break;
     case SCAN_F9:
-        keyValue = 0x88;
+        g_viewMode = VIEW_EXT_TARGET;
         break;
     case SCAN_F10:
-        keyValue = 0x8b;
+        g_viewMode = VIEW_TARGET;
         break;
     case SCAN_ESCAPE:
         // First escape hit enables ejection, 2nd performs it - prevent accidental ejects
         if (!g_ejectPending) {
-            tempStrcpy("Eject -- Eject");
+            hudMessage("Eject -- Eject");
             g_ejectPending = 1;
             break;
         }
@@ -284,7 +284,7 @@ void keyDispatch(uint16 scanCode) {
     }
 
     if (g_ejectState != 0) {
-        keyValue = 0x8c;
+        g_viewMode = VIEW_EJECT;
     }
 
 end_dispatch:
@@ -309,7 +309,7 @@ void selectMissile() {
     strcpy(strBuf, missiles[missleSpec[missileSpecIndex].weaponIdx].longName);
     strcat(strBuf, missleSpec[missileSpecIndex].ammo == 0 ? " not available" : " armed");
     drawWeaponSelectMarker(missileSpecIndex);
-    tempStrcpy(strBuf);
+    hudMessage(strBuf);
 }
 
 // ==== seg000:0xda35 ====

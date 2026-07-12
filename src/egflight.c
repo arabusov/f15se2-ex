@@ -93,7 +93,7 @@ void stepFlightModel(void) {
         if (g_autopilotEngaged == 1) {
             g_directorMode =
                 g_autopilotEngaged =
-                    keyValue = 0;
+                    g_viewMode = VIEW_COCKPIT;
         }
     }
 
@@ -206,13 +206,13 @@ switch_break:
     if (g_knots > 350 && !(*((uint8 *)&g_playerPlaneFlags) & 1) && g_gearDownArmed != 0) {
         g_gearDownArmed = 0;
         *((uint8 *)&g_playerPlaneFlags) |= 1;
-        tempStrcpy("Landing gear raised");
+        hudMessage("Landing gear raised");
         makeSound(32, 2);
     }
 
     if (g_groundAltitude == g_viewZ && g_setThrust == 0 && !(*((uint8 *)&g_playerPlaneFlags) & 8)) {
         *((uint8 *)&g_playerPlaneFlags) |= 8;
-        tempStrcpy("Brakes on");
+        hudMessage("Brakes on");
     }
 
     if (g_rollInput != 0 || g_pitchInput != 0) {
@@ -790,29 +790,29 @@ void renderFrame() {
     g_camEyeFracX = g_camEyeFracY = g_camEyeFracZ = 0;
     g_viewTargetAlt = g_viewZ;
     camDist = g_externalCamDist = clampRange(g_externalCamDist, 2, 8);
-    switch (keyValue) {
-    case 0:
-    case 0x44:
+    switch (g_viewMode) {
+    case VIEW_COCKPIT:
+    case VIEW_FORWARD:
         g_viewHeading = g_ourHead;
         g_viewPitch = g_ourPitch;
         g_viewRoll = g_ourRoll;
         break;
-    case 0x41:
+    case VIEW_REAR:
         g_viewHeading = g_ourHead + 0x8000;
         g_viewPitch = -g_ourPitch;
         g_viewRoll = -g_ourRoll;
         break;
-    case 0x43:
+    case VIEW_RIGHT:
         g_viewHeading = g_ourHead + 0x4000;
         g_viewPitch = -g_ourRoll;
         g_viewRoll = g_ourPitch;
         break;
-    case 0x42:
+    case VIEW_LEFT:
         g_viewHeading = g_ourHead - 0x4000;
         g_viewPitch = g_ourRoll;
         g_viewRoll = -g_ourPitch;
         break;
-    case 0x84: {
+    case VIEW_EXT_DYNAMIC: {
         /* The trailing replay camera reads a pose from the per-sim-step history
          * ring; interpolate between the two samples bracketing the delayed view
          * time (render alpha, Q12) so it tracks smoothly instead of stepping at
@@ -837,7 +837,7 @@ void renderFrame() {
         g_camEyeZ = s0->alt + (((int32)(s1->alt - s0->alt) * a) >> 12);
         break;
     }
-    case 0x85:
+    case VIEW_EXT_SIDE:
         g_viewHeading = g_ourHead - 0x4000;
         g_viewPitch = 0;
         g_viewRoll = 0;
@@ -846,13 +846,13 @@ void renderFrame() {
         g_camEyeX = eyeFromQ8(sinMulQ8(g_ourHead + 0x4000, 0x18 << camDist) + ((long)g_ViewX << 8), &g_camEyeFracX);
         g_camEyeY = eyeFromQ8(cosMulQ8(g_ourHead + 0x4000, 0x18 << camDist) + ((long)g_ViewY << 8), &g_camEyeFracY);
         break;
-    case 0x86:
+    case VIEW_EXT_UNUSED:
         g_viewHeading = 0x8000;
         g_viewPitch = 0;
         g_viewRoll = 0;
         g_camEyeY = (0x18 << camDist) + g_ViewY;
         break;
-    case 0x87:
+    case VIEW_EXT_FOLLOW:
         g_viewHeading = g_ourHead;
         g_viewPitch = 0;
         g_viewRoll = 0;
@@ -860,10 +860,10 @@ void renderFrame() {
         g_camEyeY = eyeFromQ8(cosMulQ8(g_ourHead + 0x8000, 0x18 << camDist) + ((long)g_ViewY << 8), &g_camEyeFracY);
         g_camEyeZ = (4 << camDist) + g_viewZ;
         break;
-    case 0x88:
-    case 0x89:
-    case 0x8b:
-        if (keyValue != 0x89) {
+    case VIEW_EXT_TARGET:
+    case VIEW_MISSILE:
+    case VIEW_TARGET:
+        if (g_viewMode != VIEW_MISSILE) {
             if (g_currentWeaponType == 1) {
                 // XXX: test byte ptr g_airTargetLock, 80h -> check which byte is tested, other byte ptr instructions in this routine
                 if (!(g_airTargetLock & 0x80)) g_viewTargetObj = g_airTargetLock + 0x20;
@@ -885,7 +885,7 @@ void renderFrame() {
                 } else {
                     g_projectiles[g_viewTargetObj].worldX = g_ourHead;
                     g_projectiles[g_viewTargetObj].worldY = g_ourPitch;
-                    if (g_directorMode != 0) keyValue = 0x87;
+                    if (g_directorMode != 0) g_viewMode = VIEW_EXT_FOLLOW;
                 }
                 camDist = 5;
             } else {
@@ -923,7 +923,7 @@ void renderFrame() {
         g_viewRoll = 0;
         camOffset = cosMul(g_viewPitch, 0x18 << camDist);
         if (g_viewTargetObj & 0x60 || g_directorMode != 0) {
-            if (keyValue == 0x88) {
+            if (g_viewMode == 0x88) {
                 g_camEyeX = eyeFromQ8(sinMulQ8(g_viewHeading + 0x8000, camOffset) + ((long)g_ViewX << 8), &g_camEyeFracX);
                 g_camEyeY = eyeFromQ8(cosMulQ8(g_viewHeading + 0x8000, camOffset) + ((long)g_ViewY << 8), &g_camEyeFracY);
                 g_camEyeZ = (int16)eyeFromQ8(sinMulQ8(g_viewPitch, 0x18 << camDist) + ((long)((4 << camDist) + g_viewZ) << 8), &g_camEyeFracZ);
@@ -947,12 +947,14 @@ void renderFrame() {
             g_camEyeZ = (int16)eyeFromQ8(((long)g_viewTargetAlt << 8) - sinMulQ8(g_viewPitch, 0x10 << camDist), &g_camEyeFracZ);
         }
         break;
-    case 0x8c:
+    case VIEW_EJECT:
         g_viewPitch = 0xf400;
         g_viewRoll = 0;
         g_camEyeX = (int32)g_crashCamX << 5;
         g_camEyeY = (0x8000 - (int32)g_crashCamY) << 5;
         g_camEyeZ = g_crashCamZ;
+        break;
+    default:
         break;
     }
     /* barrel roll */
@@ -964,7 +966,7 @@ void renderFrame() {
     /* Build the reticle/box rotation from the (interpolated) view angles every
      * render frame — the very g_viewHeading/Pitch/Roll render3DView projects the
      * world from — so the HUD boxes track the world smoothly as the player
-     * maneuvers. The forward view (keyValue 0) formerly copied the sim-rate
+     * maneuvers. The forward view (g_viewMode 0) formerly copied the sim-rate
      * g_orientMatrix here; g_orientMatrix is itself buildRotationMatrixFar of the
      * player angles (rebuildOrientation), so this is the same matrix when static,
      * but under the render/sim decouple the copy only updated the boxes at the sim
@@ -975,7 +977,7 @@ void renderFrame() {
         g_camEyeFracZ = 0;
     }
     tmp = g_hudVisible;
-    g_hudVisible = (keyValue & 0xc0) == 0;
+    g_hudVisible = (g_viewMode & 0xc0) == 0;
     if (tmp != g_hudVisible) {
         gfx_waitRetrace();
         if (g_hudVisible != 0) {
@@ -994,15 +996,15 @@ void renderFrame() {
             gfx_captureToImage(g_eg2dBacking, *g_pageFront, 0, 97, 0, 97, 320, 103);
         }
     }
-    if (keyValue != g_lastViewKey) {
-        if (keyValue == 0x42 || keyValue == 0x43 || keyValue == 0x41) {
+    if (g_viewMode != g_lastViewKey) {
+        if (g_viewMode == VIEW_LEFT || g_viewMode == VIEW_RIGHT || g_viewMode == VIEW_REAR) {
             gfx_waitRetrace();
             if (gfx_getModecode() == 3) {
-                openBlitClosePic(keyValue == 0x42 ? "256Left.Pic" : keyValue == 0x43 ? "256Right.Pic"
+                openBlitClosePic(g_viewMode == VIEW_LEFT ? "256Left.Pic" : g_viewMode == VIEW_RIGHT ? "256Right.Pic"
                                                                                      : "256Rear.Pic",
                                  *g_pageFront);
             } else {
-                openBlitClosePic(keyValue == 0x42 ? "Left.Pic" : keyValue == 0x43 ? "Right.Pic"
+                openBlitClosePic(g_viewMode == VIEW_LEFT ? "Left.Pic" : g_viewMode == VIEW_RIGHT ? "Right.Pic"
                                                                                   : "Rear.Pic",
                                  *g_pageFront);
             }
@@ -1010,7 +1012,7 @@ void renderFrame() {
         } else {
             g_pageFront[8] = g_hudVisible != 0 ? 96 : 199;
         }
-        g_lastViewKey = keyValue;
+        g_lastViewKey = g_viewMode;
     }
     g_horizonGroundColor = g_world3dData[47];
     *(uint8 *)(&g_skyColorIndex) = 3;
@@ -1023,7 +1025,7 @@ void renderFrame() {
     render3DView(-g_viewHeading, g_viewPitch, g_viewRoll, g_camEyeX, g_camEyeY, (int32)g_camEyeZ, 0, 0, 320, g_pageFront[8] + 1);
     g_extraScaleShift = 0;
     g_savedPosVisible = g_posVisibleFlag;
-    if (keyValue == 0x41) {
+    if (g_viewMode == 0x41) {
         drawVectorShape(g_rearViewShape);
         gfx_setColor(0xf);
         g_lineX1 = 241;

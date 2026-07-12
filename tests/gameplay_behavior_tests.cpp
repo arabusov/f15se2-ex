@@ -22,7 +22,7 @@ extern void updateThreatAlert(void);
 extern int samCanAcquireTarget(int slot, int targetX, int targetY, int targetAlt, int mode);
 extern int16 markTargetReached(int16 targetIdx);
 extern void appendMapEvent(int16 eventType, int16 eventArg);
-extern void scheduleTimedEvent(int16 keyVal, int16 delay);
+extern void scheduleTimedEvent(ViewMode viewMode, int16 delay);
 extern void scheduleEventCheck(int16 eventObjIdx, uint16 priority);
 extern void placeString(int16 waypointIdx);
 extern void finalizeMission(int outcome);
@@ -69,7 +69,7 @@ void resetGameplayState() {
     g_eventLogCount = 0;
     g_directorMode = 0;
     g_directorEventDeadline = -1;
-    keyValue = 0;
+    g_viewMode = VIEW_COCKPIT;
     g_viewTargetObj = 0;
     frameTick = 0;
     g_ejectState = 0;
@@ -243,19 +243,19 @@ int main() {
     resetGameplayState();
     g_frameRateScaling = 20;
     frameTick = 100;
-    scheduleTimedEvent(0x77, 4);
-    require(keyValue == 0 && g_directorEventDeadline == -1,
+    scheduleTimedEvent((ViewMode)0x77, 4);
+    require(g_viewMode == 0 && g_directorEventDeadline == -1,
             "scheduleTimedEvent ignores requests when director mode is off");
     g_directorMode = 2;
-    scheduleTimedEvent(0x77, 4);
-    require(keyValue == 0x77 && g_directorEventDeadline == 180,
+    scheduleTimedEvent((ViewMode)0x77, 4);
+    require(g_viewMode == 0x77 && g_directorEventDeadline == 180,
             "scheduleTimedEvent stores key and frame-rate-scaled deadline");
     g_directorEventDeadline = -1;
-    scheduleEventCheck(0x55, 3);
+    scheduleEventCheck((ViewMode)0x55, 3);
     require(g_viewTargetObj == 0 && g_directorEventDeadline == -1,
             "scheduleEventCheck rejects priorities above director mode");
-    scheduleEventCheck(0x55, 2);
-    require(g_viewTargetObj == 0x55 && keyValue == 0x89 &&
+    scheduleEventCheck((ViewMode)0x55, 2);
+    require(g_viewTargetObj == 0x55 && g_viewMode == 0x89 &&
                 g_directorEventDeadline == frameTick + 4 * g_frameRateScaling,
             "scheduleEventCheck schedules a mode-2 director event");
     g_directorMode = 1;

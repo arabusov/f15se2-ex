@@ -141,7 +141,7 @@ void fireGroundThreat(int16 planeIdx) {
                                         placeString(planeIdx);
                                         strcat(strBuf, " firing ");
                                         strcat(strBuf, (char *)&sams[threatType]);
-                                        tempStrcpy(strBuf);
+                                        hudMessage(strBuf);
                                         makeSound(6, 2);
                                         scheduleEventCheck(planeIdx + 0x40, 2);
                                     }

@@ -92,7 +92,7 @@ void fireAirThreat(int16 objIdx) {
                                 strcpy(strBuf, sams[idx].name);
                                 strcat(strBuf, " fired by ");
                                 strcat(strBuf, aircraftTypes[g_threatSpec].name);
-                                tempStrcpy(strBuf);
+                                hudMessage(strBuf);
 
                                 makeSound(6, 2);
                                 scheduleEventCheck(objIdx + 0x20, 2);
@@ -149,7 +149,7 @@ void spawnEnemyAircraft(int16 slot, int16 objType) {
     strcat(strBuf, aircraftTypes[g_simObjects[slot].spec].name);
     strcat(strBuf, " taking off");
     if (slot < g_groundUnitCount - 4) {
-        tempStrcpy(strBuf);
+        hudMessage(strBuf);
     }
 }
 
@@ -374,7 +374,7 @@ void updateThreatTargeting(void) {
                 strcpy(strBuf,
                        missiles[g_projectiles[slot].weaponIdx].longName);
                 if (mode == 30 || mode == 29 || mode == 28) {
-                    scheduleTimedEvent(0, 1);
+                    scheduleTimedEvent(VIEW_COCKPIT, 1);
                     makeSound(2, 2);
                     strcat(strBuf, " misses ");
                     dist = rangeApprox(g_hitMapX - g_planeTable.planes[g_loftTargetIdx].mapX,
@@ -403,10 +403,10 @@ void updateThreatTargeting(void) {
                         g_hitAlt = 0;
                     }
                 msg_done:
-                    tempStrcpy(strBuf);
+                    hudMessage(strBuf);
                 } else if (slot >= 8 && g_projectiles[slot].ttl > g_frameRateScaling * 2) {
                     strcat(strBuf, " ground impact");
-                    tempStrcpy(strBuf);
+                    hudMessage(strBuf);
                 }
             }
 
@@ -435,7 +435,7 @@ void updateThreatTargeting(void) {
                     if (mapEvents[0].ttl == 0) {
                         strcpy(strBuf, "Hit by ");
                         strcat(strBuf, sams[spec].name);
-                        tempStrcpy(strBuf);
+                        hudMessage(strBuf);
                         bombTarget();
                         ring = (frameTick >> 1) & 7;
                         g_particles[ring].posX = g_hitMapX;
@@ -470,7 +470,7 @@ void updateThreatTargeting(void) {
                     }
                     strcat(strBuf, " hit by ");
                     strcat(strBuf, sams[spec].name);
-                    tempStrcpy(strBuf);
+                    hudMessage(strBuf);
                 }
             }
 
@@ -758,7 +758,7 @@ void fireMissile() {
     g_lastMissileSlot = slot;
     strcpy(strBuf, missiles[weaponIdx].longName);
     strcat(strBuf, " fired");
-    tempStrcpy(strBuf);
+    hudMessage(strBuf);
 
     makeSound(sams[spec].lockRange != 0 ? 18 : 24, 2);
 

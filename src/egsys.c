@@ -360,7 +360,7 @@ void gameMainLoop(void) {
         objApplyInterp(simPrev, simNext, projPrev, projNext, (int64)accumNs, (int64)simStepNs);
         renderFrame();
         renderHudFrame(0);
-        if (keyValue == 0)
+        if (g_viewMode == 0)
             drawInstrumentGaugesFar();
         gfx_dacAnimate();
         camRestore(&camNext); /* restore authoritative sim state for the next step */
