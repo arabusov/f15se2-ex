@@ -97,6 +97,7 @@ Problems with the game that were introduces by the port, and to the best of our 
 1. Shaking in the cockpit after getting hit is too long.
 1. Need better visibility of missiles on the radar screen, these are too small after making the radar high resolution.
 1. When on the airfield/carrier, can see through to the ground on the sides of the view (exposed by widescreen support). Also, aircraft geometry sometimes flickers beneath the player.
+1. Vertical stabilizer shapes are missing in rear view with pilot's helmet (only lines drawn).
 1. Some z-fighting still visible, e.g. on the underside of the player aircraft in external view.
 1. When starting a new mission after a previous one has been completed, the sound for the previous flight's landing ("Nice landing") is played, looks as if the sound queue is not drained before terminating the previous mission?
 1. In the debriefing screen, shot down planes only display the NATO reporting name e.g. "Flogger shot down", should be "MIG-23 Flogger".
