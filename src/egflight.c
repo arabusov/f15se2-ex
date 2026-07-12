@@ -1084,17 +1084,46 @@ void drawFuelGauge(void) {
 
 void drawVectorShape(const int16 *shapeData) {
     while (*shapeData != -1) {
-        gfx_setColor(colorLut[*shapeData++]);
-        resetScanlineSpans();
-        shapeData += 2;
-        while (*shapeData != -1) {
-            g_lineX1 = shapeData[-2];
-            g_lineY1 = shapeData[-1];
-            g_lineX2 = *shapeData++;
-            g_lineY2 = *shapeData++;
-            clipAndRasterizeEdge();
+        int color = colorLut[*shapeData++];
+        gfx_setColor(color);
+        if (r2d_vectorActive()) {
+            /* The shape draws inside the 3D viewport's show-through rect, so on GL a
+             * span fill baked into the page would be composited away. Submit the
+             * sub-shape's vertex ring as an immediate native-res filled polygon (its
+             * slanted highlight edge is drawn separately via gfx_drawLine → native). */
+            short ring[64 * 2];
+            int nv = 0;
+            while (*shapeData != -1 && nv < 64) {
+                ring[nv * 2] = *shapeData++;
+                ring[nv * 2 + 1] = *shapeData++;
+                nv++;
+            }
+            /* The list repeats the first vertex to close the loop; GL_POLYGON closes
+             * implicitly, so drop the trailing duplicate. */
+            if (nv >= 2 && ring[0] == ring[(nv - 1) * 2] && ring[1] == ring[(nv - 1) * 2 + 1])
+                nv--;
+            /* Extend the bottom edge one pixel down so the GL fill closes the seam to
+             * the body sprite below (the span fill covers it on software). */
+            {
+                int k, maxY = ring[1];
+                for (k = 1; k < nv; k++)
+                    if (ring[k * 2 + 1] > maxY) maxY = ring[k * 2 + 1];
+                for (k = 0; k < nv; k++)
+                    if (ring[k * 2 + 1] == maxY) ring[k * 2 + 1] = maxY + 1;
+            }
+            r2d_submitPoly(ring, nv, color, 0, 0, 320, 200);
+        } else {
+            resetScanlineSpans();
+            shapeData += 2;
+            while (*shapeData != -1) {
+                g_lineX1 = shapeData[-2];
+                g_lineY1 = shapeData[-1];
+                g_lineX2 = *shapeData++;
+                g_lineY2 = *shapeData++;
+                clipAndRasterizeEdge();
+            }
+            flushSpanDirtyRect();
         }
-        flushSpanDirtyRect();
         shapeData++;
     }
 }
