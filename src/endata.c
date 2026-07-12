@@ -4180,7 +4180,7 @@ char textBuf[100];
 
 /* Unit/grid data tables */
 char unitTypeTable[100];
-char gridFlags[256];
+uint8 gridFlags[256];
 
 /* Target data — one contiguous 36-byte block (see TargetBlock / worldExportToEnd) */
 TargetBlock targetBlock;

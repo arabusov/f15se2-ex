@@ -495,8 +495,8 @@ int main() {
         const float s = static_cast<float>(sine(g_ourHead)) / 32768.0f;
         const float fsx = static_cast<float>(0x2100 - 0x2000) * inv;
         const float fsy = static_cast<float>(0x3000 - 0x2F00) * inv;
-        const int expX = scopeRoundExpect(kRadarProjectionCenterX + (c * fsx - s * fsy));
-        const int expY = scopeRoundExpect(kRadarProjectionCenterY - (c * fsy + s * fsx) * kScopeAspectY);
+        const int expX = scopeRoundExpect(static_cast<float>(kRadarProjectionCenterX) + (c * fsx - s * fsy));
+        const int expY = scopeRoundExpect(static_cast<float>(kRadarProjectionCenterY) - (c * fsy + s * fsx) * kScopeAspectY);
         require(vtxScratch.vproj.x.lo == expX &&
                     vtxScratch.vproj.y.lo == expY &&
                     g_projDepth == 0,
