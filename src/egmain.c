@@ -22,7 +22,7 @@
 #include <string.h>
 
 /* Private helpers for this translation unit. */
-void __cdecl drawCockpit();
+void drawCockpit();
 void runGameSession();
 
 // ==== seg000:0x10 ====
@@ -36,7 +36,7 @@ int egame_main(void) {
     g_eventLogCount = 0;
     g_ejectState = 0;
     g_ejectPending = 0;
-    keyValue = 0;
+    g_viewMode = VIEW_COCKPIT;
     g_directorMode = 0;
     g_directorEventDeadline = -1;
     g_tacmapIndicators[7] = g_tacmapIndicators[12] = g_tacmapIndicators[17] = g_tacmapIndicators[22] = 3;

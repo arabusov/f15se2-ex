@@ -84,7 +84,7 @@ typedef struct MenuItem {
 typedef struct {
     char mapX;
     char mapY;
-    char status;
+    uint8 status;
     char unitId;
     char unk4;
     char unk5;

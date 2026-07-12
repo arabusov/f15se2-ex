@@ -335,13 +335,24 @@ else()
     message(WARNING "Unknown C++ compiler: ${CMAKE_CXX_COMPILER_ID}")
 endif()
 
-# copy sdl3.dll into the build directory after build
+# copy necessary DLLs into the build directory after build on Windows
 if(WIN32)
+    # sdl3.dll
     add_custom_command(TARGET f15se2 POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_FILE:SDL3::SDL3>
         $<TARGET_FILE_DIR:f15se2>
     )
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        # libc++.dll and libunwind.dll
+        get_filename_component(COMPILER_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        add_custom_command(TARGET f15se2 POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${COMPILER_DIR}/libc++.dll"
+            "${COMPILER_DIR}/libunwind.dll"
+            $<TARGET_FILE_DIR:f15se2>
+        )
+    endif()
 endif()
 
 # HD assets (optional high-res sprite art, GPU backends only) live in assets/ and are

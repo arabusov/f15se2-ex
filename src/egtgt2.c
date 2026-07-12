@@ -55,7 +55,7 @@ void projectWorldToHud(int16 worldX, int16 worldY, int16 worldZ) {
     relY = worldY - g_viewY_;
     relZ = (worldZ - g_viewZ) >> 5;
 
-    if (keyValue & 0x80) {
+    if (g_viewMode & 0x80) {
         relX -= (int16)((g_ViewX - g_camEyeX) >> 5);
         relY -= (int16)((g_ViewY - g_camEyeY) >> 5);
         relZ -= (int16)((-((int32)(uint16)g_viewZ - (int32)g_camEyeZ)) >> 5);
@@ -115,7 +115,7 @@ void projectWorldToHudFine(int32 fineX, int32 fineY, int fineZ) {
     relY = fineY + g_ViewY - 0x100000L; /* (relY >> 5) == object posY - g_viewY_ */
     relZ = (long)fineZ - (long)g_viewZ;
 
-    if (keyValue & 0x80) {
+    if (g_viewMode & 0x80) {
         relX -= g_ViewX - g_camEyeX;
         relY -= g_ViewY - g_camEyeY;
         relZ -= -((long)(unsigned)g_viewZ - (long)g_camEyeZ);

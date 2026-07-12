@@ -161,7 +161,7 @@ extern int16 g_setThrust;
 extern int16 g_joyCalibTimer;
 extern int16 g_hudBottomY;
 extern const int16 g_rearViewShape[];
-extern int16 g_lastViewKey;
+extern ViewMode g_lastViewKey;
 extern const int16 ammoNumX[];
 extern int16 g_tacmapIndicators[];
 extern int16 *g_pageFront;
@@ -291,7 +291,7 @@ extern int16 g_ejectState;
 extern uint8 g_modelVertY[];
 extern int16 g_scopeArcRange;
 extern uint8 g_modelVertZ[];
-extern int16 keyValue;
+extern ViewMode g_viewMode;
 extern int16 g_waypointBearing;
 // 16-bit on purpose: view-angle math relies on 16-bit wraparound (the gimbal
 // flip in renderFrame, where side views feed roll into pitch). Native int=4

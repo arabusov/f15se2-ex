@@ -43,7 +43,7 @@ extern void setViewPosition(int16 viewX, int16 viewY, int16 viewZ);
 extern struct TileObject *findNearestTileObject(uint32 worldX, uint32 worldY);
 extern int missileTargetCompat(int weaponType, int objIdx);
 extern void projectMapPoint(int mapX, int mapY);
-extern void tempStrcpy(const char *src);
+extern void hudMessage(const char *src);
 extern void setTimedMessage(char *message);
 extern void buildVertexSignMask(int16 screenX, int16 screenY);
 extern void projectModelVertices(int16 screenX, int16 screenY);
@@ -495,8 +495,8 @@ int main() {
         const float s = static_cast<float>(sine(g_ourHead)) / 32768.0f;
         const float fsx = static_cast<float>(0x2100 - 0x2000) * inv;
         const float fsy = static_cast<float>(0x3000 - 0x2F00) * inv;
-        const int expX = scopeRoundExpect(kRadarProjectionCenterX + (c * fsx - s * fsy));
-        const int expY = scopeRoundExpect(kRadarProjectionCenterY - (c * fsy + s * fsx) * kScopeAspectY);
+        const int expX = scopeRoundExpect(static_cast<float>(kRadarProjectionCenterX) + (c * fsx - s * fsy));
+        const int expY = scopeRoundExpect(static_cast<float>(kRadarProjectionCenterY) - (c * fsy + s * fsx) * kScopeAspectY);
         require(vtxScratch.vproj.x.lo == expX &&
                     vtxScratch.vproj.y.lo == expY &&
                     g_projDepth == 0,
@@ -525,12 +525,12 @@ int main() {
     require(objectToScreen(0x2000, 0x3000, &sx, &sy) == 0,
             "objectToScreen rejects when HUD is hidden");
 
-    // --- tempStrcpy / setTimedMessage HUD text + timers (egtacmap) ----------
+    // --- hudMessage / setTimedMessage HUD text + timers (egtacmap) ----------
     g_frameRateScaling = 4; // timer = frameRateScaling * 3
-    tempStrcpy("status");
+    hudMessage("status");
     require(std::strcmp(tempString, "status") == 0 &&
                 g_hudMsgTimer == kTimedMessageFrames,
-            "tempStrcpy copies HUD text and sets the original three-second timer");
+            "hudMessage copies HUD text and sets the original three-second timer");
     char timedMessage[] = "director";
     setTimedMessage(timedMessage);
     require(std::strcmp(string_3C04A, "director") == 0 &&
@@ -562,7 +562,7 @@ int main() {
     g_viewX_ = kHudProjWorldX;
     g_viewY_ = kHudProjWorldY;
     g_viewZ = kHudProjViewZ;
-    keyValue = 0;
+    g_viewMode = VIEW_COCKPIT;
     g_halfScaleRender = 0;
     g_pageFront[8] = 199;
     projectWorldToHud(kHudProjWorldX, kHudProjWorldY, 0);
@@ -570,14 +570,14 @@ int main() {
                 vtxScratch.vproj.y.lo == kHudProjFullHeightCenterY &&
                 g_projDepth == kHudProjStoredDepth,
             "projectWorldToHud projects centered points through the original full-height HUD center");
-    keyValue = kHudCrashCamFlag;
+    g_viewMode = (ViewMode)kHudCrashCamFlag;
     g_ViewX = g_camEyeX + kHudCamEyeDelta;
     g_ViewY = g_camEyeY;
     g_camEyeZ = g_viewZ;
     projectWorldToHud(kHudProjWorldX, kHudProjWorldY, 0);
     require(vtxScratch.vproj.x.lo != -1,
             "projectWorldToHud preserves original crash-camera relative-eye adjustment path");
-    keyValue = 0;
+    g_viewMode = VIEW_COCKPIT;
     projectWorldToHud(kHudProjWorldX, kHudProjWorldY, kHudProjNearPositiveZ);
     require(vtxScratch.vproj.x.lo == -1,
             "projectWorldToHud rejects points behind the original camera depth plane");

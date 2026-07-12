@@ -128,7 +128,7 @@ extern int samMissed;
 extern int groundKilled;
 extern int samKilled;
 extern char unitTypeTable[];
-extern char gridFlags[];
+extern uint8 gridFlags[];
 extern struct Game far *gameData;
 extern char hercFlag;
 extern uint8 joyAxisY;

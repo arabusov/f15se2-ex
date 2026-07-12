@@ -23,14 +23,14 @@
 #include <string.h>
 
 /* Private helpers for this translation unit. */
-void __cdecl egDrawStringCentered(int16 *, const char *, int, int, int);
+void egDrawStringCentered(int16 *, const char *, int, int, int);
 void renderHudFrame();
 int mapXToScreen();
 int mapYToScreen();
 void drawMapLine(int x1, int y1, int x2, int y2);
 void drawColorPoint();
 void drawMapPoint(int, int, int);
-void __cdecl drawPanelText(int, const char *, int);
+void drawPanelText(int, const char *, int);
 int readScreenPixel(int screenX, int screenY);
 
 // ==== seg000:0x8e38 ====
@@ -50,7 +50,7 @@ void renderHudFrame(int unused) {
     if (g_hudVisible != 0) {
         if (g_damageTakenFlag != 0) {
             g_damageTakenFlag = 0;
-            if (!(keyValue & 0x80)) {
+            if (!(g_viewMode & 0x80)) {
                 setDrawColor(COLOR_FLAMING);
                 /* Immediate on GL: the flash colour (COLOR_FLAMING = 0x0d) is a
                  * fire-cycled DAC entry, so baking it into the page would keep the
@@ -61,7 +61,7 @@ void renderHudFrame(int unused) {
             }
         }
         g_hudDrawnFlag = 1;
-        if (keyValue == 0 && g_halfScaleRender == 0) {
+        if (g_viewMode == VIEW_COCKPIT && g_halfScaleRender == 0) {
             // draw stick position indicator
             setDrawColor(COLOR_BLACK);
             drawViewportLine(277, 83, 293, 83);
@@ -146,7 +146,7 @@ void renderHudFrame(int unused) {
     somewhere:
         drawTacticalMap(0);
     }
-    if (g_hudMsgTimer != 0 && ((keyValue == 0 && g_halfScaleRender == 0) || (g_directorMode != 0))) {
+    if (g_hudMsgTimer != 0 && ((g_viewMode == VIEW_COCKPIT && g_halfScaleRender == 0) || (g_directorMode != 0))) {
         drawStringActivePage(tempString, -(((int16)strlen(tempString) >> 1) - 40) * 4, 24, 0xf);
         g_hudMsgTimer--;
         if (g_hudMsgTimer == 0) { // cancel pending eject on message disappear
@@ -156,7 +156,7 @@ void renderHudFrame(int unused) {
             drawStringActivePage("Press any key to play", 120, 1, g_nightMode != 0 ? 0xe : 0);
         }
     }
-    if (g_dirMsgTimer != 0 && keyValue == 0 && g_halfScaleRender == 0) {
+    if (g_dirMsgTimer != 0 && g_viewMode == VIEW_COCKPIT && g_halfScaleRender == 0) {
         drawStringActivePage(string_3C04A, -(((int16)strlen(string_3C04A) >> 1) - 40) * 4, 90, 0xf);
         g_dirMsgTimer--;
     }
@@ -282,7 +282,7 @@ void renderTacMapOverlay(void) {
 
 // ==== seg000:0x9875 ====
 void zoomIn(void) {
-    if (keyValue & 0x80) {
+    if (g_viewMode & 0x80) {
         g_externalCamDist--;
     } else {
         if (g_mapMode == 0 && g_mapZoomLevel < 9) {
@@ -297,7 +297,7 @@ void zoomIn(void) {
 
 // ==== seg000:0x98b1 ====
 void zoomOut(void) {
-    if (keyValue & 0x80) {
+    if (g_viewMode & 0x80) {
         g_externalCamDist++;
     } else {
         if (g_mapMode == 0 && g_mapZoomLevel > 2) {
@@ -609,7 +609,7 @@ int readScreenPixel(int screenX, int screenY) {
 }
 
 // ==== seg000:0xa1e4 ====
-void tempStrcpy(const char *src) {
+void hudMessage(const char *src) {
     strcpy(tempString, src);
     g_hudMsgTimer = g_frameRateScaling * 3;
 }
