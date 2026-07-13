@@ -48,9 +48,11 @@ static int scopeRound(float v) {
 }
 
 /* One radar/MFD line, drawn from the current fill colour and cut at the middle-MFD
- * box (the fillSpanRect region above, as a half-open scissor rect). */
-static void scopeLine(float x1, float y1, float x2, float y2) {
-    r2d_submitScopeLine(x1, y1, x2, y2, g_pageFront[2], 120, 104, 200, 176, 0.5f);
+ * box (the fillSpanRect region above, as a half-open scissor rect). widthScale is
+ * the GL line weight relative to the HUD's full-weight lines (grid: thin 0.5;
+ * missile ticks: thicker, so they read apart from the grid at a glance). */
+static void scopeLine(float x1, float y1, float x2, float y2, float widthScale) {
+    r2d_submitScopeLine(x1, y1, x2, y2, g_pageFront[2], 120, 104, 200, 176, widthScale);
 }
 
 void drawTacticalMap(char page) {
@@ -91,7 +93,7 @@ void drawTacticalMap(char page) {
         startX = g_scopeFx;
         startY = g_scopeFy;
         projectMapPoint(i * 0x400 + gridX, gridY - 0x2c00);
-        scopeLine(startX, startY, g_scopeFx, g_scopeFy);
+        scopeLine(startX, startY, g_scopeFx, g_scopeFy, 0.5f);
         i += 2;
     }
     i = gridLo * 2;
@@ -100,7 +102,7 @@ void drawTacticalMap(char page) {
         startX = g_scopeFx;
         startY = g_scopeFy;
         projectMapPoint(gridX - 0x2c00, i * 0x400 + gridY);
-        scopeLine(startX, startY, g_scopeFx, g_scopeFy);
+        scopeLine(startX, startY, g_scopeFx, g_scopeFy, 0.5f);
         i += 2;
     }
     for (i = 0; i < g_groundUnitCount; i++) {
@@ -214,9 +216,12 @@ void drawTacticalMap(char page) {
                  * truncation) so the tick points in the true heading at a consistent
                  * length, like the scope's grid lines. */
                 code = g_projectiles[i].worldX - g_ourHead;
+                /* Full weight (1.0), not the grid's thin 0.5 — an inbound weapon
+                 * must read apart from the grid lines it overlays at a glance. */
                 scopeLine(g_scopeFx, g_scopeFy,
                           g_scopeFx - (float)sine(code) * (radius / 32768.0f),
-                          g_scopeFy + (float)cosine(code) * (radius / 32768.0f) * scopeAspectY());
+                          g_scopeFy + (float)cosine(code) * (radius / 32768.0f) * scopeAspectY(),
+                          1.0f);
             }
         }
     }
@@ -230,10 +235,10 @@ void drawMapMarkerBox(int centerX, int centerY, int color) {
     (void)centerX;
     (void)centerY;
     setDrawColor(color);
-    scopeLine(x - 4, y - 3, x + 4, y - 3);
-    scopeLine(x + 4, y - 3, x + 4, y + 3);
-    scopeLine(x + 4, y + 3, x - 4, y + 3);
-    scopeLine(x - 4, y + 3, x - 4, y - 3);
+    scopeLine(x - 4, y - 3, x + 4, y - 3, 0.5f);
+    scopeLine(x + 4, y - 3, x + 4, y + 3, 0.5f);
+    scopeLine(x + 4, y + 3, x - 4, y + 3, 0.5f);
+    scopeLine(x - 4, y + 3, x - 4, y - 3, 0.5f);
 }
 
 // ==== seg000:0xa7c4 ====
