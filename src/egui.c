@@ -127,9 +127,11 @@ void drawTacticalMap(char page) {
                 if (altDiff > 1000) {
                     altBand = 2;
                 }
-                /* GL: spin the base plane icon to the contact's relative heading;
-                 * software falls back to the atlas's 16 hand-drawn rotation frames. */
-                if (!drawRotatedGaugeSprite(0, altBand, g_scopeFx, g_scopeFy,
+                /* HD plane icon (spun to relative heading) if present, else GL spins
+                 * the base atlas icon, else software's 16 hand-drawn rotation frames. */
+                if (!hdsprite_drawRadarContact(altBand, g_scopeFx, g_scopeFy,
+                                               g_simObjects[i].heading.w - g_ourHead) &&
+                    !drawRotatedGaugeSprite(0, altBand, g_scopeFx, g_scopeFy,
                                             g_simObjects[i].heading.w - g_ourHead)) {
                     code = g_simObjects[i].heading.w - g_ourHead + 0x800;
                     blitGaugeSprite((code >> 12) & 0xf, altBand, vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo);
@@ -162,7 +164,8 @@ void drawTacticalMap(char page) {
                  * hand-drawn frames. Status blips (1/6/7) never rotate. */
                 if (code < 8 || code > 11 ||
                     !drawRotatedGaugeSprite(8, 3, g_scopeFx, g_scopeFy, -g_ourHead)) {
-                    blitGaugeSprite(code, 3, vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo);
+                    if (!hdsprite_drawRadarBlip(code, g_scopeFx, g_scopeFy))
+                        blitGaugeSprite(code, 3, vtxScratch.vproj.x.lo, vtxScratch.vproj.y.lo);
                 }
             }
         }

@@ -1,6 +1,7 @@
 #include "hdsprite.h"
 #include "r2d.h"
 #include "log.h"
+#include "inttype.h"
 #include <SDL3/SDL.h>
 
 /* The radar ownship's on-scope footprint (320-space), matching the original 7x7
@@ -32,7 +33,7 @@ static R2DImage *radarOwnship(void) {
     if (tried) return img;
     tried = 1;
     if (!r2d_hasNativeOverlay()) return NULL; /* software: HD is GPU-only */
-    img = loadHdPng("assets/flight/radar/ownship.png");
+    img = loadHdPng("assets/flight/radar/self.png");
     return img;
 }
 
@@ -134,6 +135,65 @@ int hdsprite_drawRadarOwnship(float destX, float destY) {
      * glides with the scope grid, matching the legacy icon's destX-3 centring. */
     return r2d_submitImageF(hd, 0, 0, s->w, s->h,
                             destX - f / 2.0f, destY - f / 2.0f, f, f, 0);
+}
+
+/* Radar scope contacts (middle-MFD gauge bank), drawn into the 7x7 footprint centred
+ * on the sub-pixel blip (cx,cy). Each returns 1 if it submitted the HD art (caller
+ * skips the atlas), 0 to fall back. GPU-only; always 0 on the software backend. */
+
+/* Enemy aircraft, spun to the contact's relative heading (authored once nose-up).
+ * altBand: 0 = co-altitude, 1 = below you, 2 = above you (egui.c). */
+int hdsprite_drawRadarContact(int altBand, float cx, float cy, int angle16) {
+    static R2DImage *img[3];
+    static int tried[3];
+    static const char *const paths[3] = {
+        "assets/flight/radar/plane-level.png", /* co-altitude */
+        "assets/flight/radar/plane-low.png",   /* below you */
+        "assets/flight/radar/plane-high.png",  /* above you */
+    };
+    R2DImage *hd;
+    SDL_Surface *s;
+    float rad;
+    if (altBand < 0 || altBand > 2 || !r2d_vectorActive()) return 0;
+    if (!tried[altBand]) {
+        tried[altBand] = 1;
+        if (r2d_hasNativeOverlay()) img[altBand] = loadHdPng(paths[altBand]);
+    }
+    hd = img[altBand];
+    if (!hd) return 0;
+    s = r2d_imageSurface(hd);
+    if (!s) return 0;
+    rad = (float)(int16)angle16 * (float)(6.283185307179586 / 65536.0);
+    return r2d_submitImageRot(hd, 0, 0, s->w, s->h, cx, cy,
+                              (float)RADAR_OWNSHIP_FOOTPRINT, (float)RADAR_OWNSHIP_FOOTPRINT, rad, 0);
+}
+
+/* Fixed-orientation status blips selected by the scope's contact `code`: 1 = active
+ * ("sam"), 5 = default ground contact ("bullseye"), 7 = special ("boat"). Other codes
+ * (target, runway, …) return 0 so they keep the legacy atlas art. */
+int hdsprite_drawRadarBlip(int code, float cx, float cy) {
+    static R2DImage *img[3];
+    static int tried[3];
+    static const char *const paths[3] = {
+        "assets/flight/radar/sam.png",      /* code 1 */
+        "assets/flight/radar/bullseye.png", /* code 5 */
+        "assets/flight/radar/boat.png",     /* code 7 */
+    };
+    int idx, f = RADAR_OWNSHIP_FOOTPRINT;
+    R2DImage *hd;
+    SDL_Surface *s;
+    idx = code == 1 ? 0 : code == 5 ? 1 : code == 7 ? 2 : -1;
+    if (idx < 0 || !r2d_vectorActive()) return 0;
+    if (!tried[idx]) {
+        tried[idx] = 1;
+        if (r2d_hasNativeOverlay()) img[idx] = loadHdPng(paths[idx]);
+    }
+    hd = img[idx];
+    if (!hd) return 0;
+    s = r2d_imageSurface(hd);
+    if (!s) return 0;
+    return r2d_submitImageF(hd, 0, 0, s->w, s->h,
+                            cx - f / 2.0f, cy - f / 2.0f, (float)f, (float)f, 0);
 }
 
 /* HUD reticles: lazily-loaded HD PNGs drawn into the legacy sprite footprint. The

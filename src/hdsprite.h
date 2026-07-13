@@ -21,6 +21,16 @@ typedef struct R2DImage R2DImage;
  * a native-overlay vector frame. */
 int hdsprite_drawRadarOwnship(float destX, float destY);
 
+/* Other middle-MFD radar-scope icons, drawn into the 7x7 gauge footprint centred on
+ * the sub-pixel blip (cx,cy). Return 1 if the HD art was submitted (caller skips the
+ * atlas), 0 to fall back. GPU-only.
+ *   drawRadarContact: enemy aircraft, spun to relative heading; altBand 0=co-alt,
+ *                     1=below, 2=above (assets plane-level/plane-low/plane-high).
+ *   drawRadarBlip:    fixed status blips keyed by scope `code` — 1=sam, 5=bullseye,
+ *                     7=boat; other codes return 0 (keep legacy). */
+int hdsprite_drawRadarContact(int altBand, float cx, float cy, int angle16);
+int hdsprite_drawRadarBlip(int code, float cx, float cy);
+
 /* HUD reticles (main viewport, 320-space). Each draws the HD PNG into the footprint
  * of the legacy blitSprite it replaces — (destX,destY) is the footprint's fractional
  * top-left, so the marker glides sub-pixel with the interpolated player state (no
