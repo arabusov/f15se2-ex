@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(F15SE2-EX
-    VERSION 0.9.3
     LANGUAGES C CXX
 )
 
@@ -242,6 +241,7 @@ target_include_directories(f15se2_core BEFORE PUBLIC
     ${SRC_DIR}/compat64
     ${SRC_DIR}
     ${SRC_DIR}/shared
+    ${SRC_DIR}/generated
 )
 target_include_directories(f15se2_core PRIVATE
     ${SRC_DIR}/asound
@@ -257,6 +257,16 @@ target_link_libraries(f15se2_core PUBLIC SDL3::SDL3 OpenGL::GL OpenSSL::Crypto)
 add_executable(f15se2 ${SRC_DIR}/f15.c)
 set_target_properties(f15se2 PROPERTIES OUTPUT_NAME "f15se2-ex")
 target_link_libraries(f15se2 PRIVATE f15se2_core)
+
+# Autogenerate header file with version string
+add_custom_target(GenerateVersionHeader ALL
+    COMMAND ${CMAKE_COMMAND}
+        -D SRC_DIR=${SRC_DIR}
+        -P "GenerateVersion.cmake"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    BYPRODUCTS "${SRC_DIR}/generated/version.h"
+)
+add_dependencies(f15se2 GenerateVersionHeader)
 
 # Strip symbols from Release builds to shrink the binary (GNU/Clang only; MSVC
 # already keeps debug info in a separate .pdb rather than the exe itself).
@@ -384,6 +394,7 @@ function(add_behavior_test name)
         ${SRC_DIR}/compat64
         ${SRC_DIR}
         ${SRC_DIR}/shared
+        ${SRC_DIR}/generated
     )
     # Absolute path to the committed golden-image references (tests/golden.h).
     target_compile_definitions(${name} PRIVATE F15_GOLDEN_DIR="${TEST_DIR}/goldens")
