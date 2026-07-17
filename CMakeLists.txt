@@ -270,7 +270,7 @@ target_compile_definitions(f15se2_core PUBLIC DEBUG)
 if(AUTOSTART)
     target_compile_definitions(f15se2_core PUBLIC DEBUG_AUTOSTART)
 endif()
-target_link_libraries(f15se2_core PUBLIC SDL3::SDL3 OpenGL::GL)
+target_link_libraries(f15se2_core PUBLIC SDL3::SDL3 OpenGL::GL stdc++fs)
 
 add_executable(f15se2 ${SRC_DIR}/f15.c)
 set_target_properties(f15se2 PROPERTIES OUTPUT_NAME "f15se2-ex")
