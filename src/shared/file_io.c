@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <vector>
+#include <iomanip>
 
 static std::string fileToHash(const std::string &fname)
 {
